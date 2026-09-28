@@ -20,11 +20,13 @@ Build order agreed with Fred (five steps; each stops for his review).
    403 PERMISSION_DENIED. Not checked (would need a second account): another
    account being refused.
 5. ⏳ **Phone** (moved before 4 at Fred's request, 28 Sep). Built and tested:
-   manifest + icon, offline copy (`sw.js`), `tools/build.py`, Pages workflow;
-   first push to `fronk001/life-hub` (created **private** by Fred). Fred's part:
-   SETUP.md steps 9–12 (make public, Pages source = GitHub Actions, run the
-   workflow, Firebase authorized domain, install from Safari, sign in). Then test
-   the launchers with him on the real phone (see Launchers).
+   manifest + icon, offline copy (`sw.js`), `tools/build.py`, Pages workflow.
+   28 Sep: repo public, Pages live (verified: page, sw.js stamped, seed.local.js
+   404), Fred installed it on his iPhone. Left: launcher tests on the real phone.
+   Only Mongolian's "Open app" shows there now; Numbers + Wealth Excel sit in the
+   Money review card, which the phone shows from Thu 1 Oct (monthly: ≤3 days
+   before its due day, Sun 4 Oct). Hosted `?demo` has no launchers (it builds on
+   seed.example.js), so it can't stand in for that test.
 4. Edit forms (add/edit/archive habits, rituals, steps, launchers, goals).
 
 ## Run
