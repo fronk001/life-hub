@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Life Hub's database rules. Paste all of this into the Firebase console
+// (Firestore → Rules) and press Publish — see SETUP.md.
+//
+// Each signed-in account can read and write only its own documents:
+// users/{its uid}/data/main and one document per year (2026, 2027, …).
+// Everything else, including anyone not signed in, is refused.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/data/{doc} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid
+                         && (doc == 'main' || doc.matches('[0-9]{4}'));
+    }
+  }
+}

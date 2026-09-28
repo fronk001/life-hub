@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<!-- UI smoke test: loads the real app in a frame, taps things, checks the
+     screen and storage. Then syncs a "laptop" frame and a "phone" frame
+     through the pretend server (?fake-sync), signing in through the real form.
+     Run with: py tools/run_tests.py tools/smoke.html -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Life Hub smoke test</title></head>
+<body>
+<pre id="out">running…</pre>
+<iframe id="f" title="app" style="width:1440px;height:1200px;border:0"></iframe>
+<iframe id="g" title="phone" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+import { FAKE_ACCOUNTS } from '../src/data/fake-backend.js';
+
+const f = document.getElementById('f');
+const g = document.getElementById('g');
+const out = document.getElementById('out');
+const log = [];
+const check = (name, cond) => log.push({ name, ok: !!cond });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, what, ms = 4000) {
+  for (const t = Date.now(); Date.now() - t < ms; await sleep(30)) {
+    const v = fn();
+    if (v) return v;
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+// Wait for the new page itself: checking right after setting src can
+// match the page that is still on screen.
+const go = (fr, url) => new Promise((r) => { fr.addEventListener('load', r, { once: true }); fr.src = url; });
+const $ = (sel) => f.contentDocument.querySelector(sel);
+const text = (sel) => ($(sel) ? $(sel).textContent.replace(/\s+/g, ' ').trim() : '');
+const saved = () => JSON.parse(f.contentWindow.localStorage.getItem('lifehub:demo'));
+
+try {
+  await go(f, '../src/index.html?demo&reset&today=2026-10-01');
+  await until(() => $('.desk'), 'the dashboard');
+
+  check('header shows the mockup date', text('h1') === 'Thursday, 1 October');
+  check('streak starts at 25', text('.streakbox .v') === '25 days');
+
+  $('.feature [data-act=habit]').click();
+  check('Mongolian button flips to done', text('.feature [data-act=habit]') === 'Done for today');
+  check('streak goes to 26', text('.streakbox .v') === '26 days');
+  check('today square is ticked too', $('.cell.today.done[data-id=mn]'));
+  check('the tick is saved', saved().checks['2026-10-01'].mn === true);
+
+  $('.cell[data-id=gym][data-day="2026-09-30"]').click();
+  const gymWeek = $('.cell[data-id=gym]').closest('.hgrid').querySelector('.wk').textContent.trim();
+  check('a past day this week can be ticked', gymWeek === '3 / 4');
+
+  $('[data-act=step][data-step=wealth]').click();
+  check('money review finishes without the optional step', /^Done/.test(text('.ritual:nth-child(2) .pill')));
+  check('its week goal reads full', text('.goal-card.week .goal:nth-child(4) .val') === '3/3');
+
+  $('[data-act=start][data-id=review]').click();
+  check('starting the weekly review shows its checklist', $('[data-act=step][data-id=review]'));
+
+  $('[data-act=ritual-done][data-id=groceries]').click();
+  check('groceries marked done', text('[data-act=ritual-done][data-id=groceries]').startsWith('Done'));
+  check('groceries pill says Done', text('.ritual:nth-child(1) .pill') === 'Done');
+
+  f.style.width = '390px';
+  await until(() => $('.ph'), 'the phone layout');
+  // Thursday: Mongolian, gym and reading count; dressage is planned for Saturday.
+  check('phone headline counts today', text('.ph-head h1') === '1 of 3 done');
+  $('.ph-row[data-id=gym]').click();
+  check('phone tick updates the headline', text('.ph-head h1') === '2 of 3 done');
+  $('.ph-row[data-id=read]').click();
+  check('all three makes it all done', text('.ph-head h1') === 'All done today');
+  check('no money banner once the review is done', !text('.ph').includes('Money review'));
+  check('the started weekly review gets a banner', text('.ph').includes('Weekly review due Sunday'));
+  check('week tile follows', text('.tile:nth-child(2) .v') === '4/4');
+
+  await go(f, '../src/index.html?demo&today=2026-10-01');
+  await until(() => $('.ph') && $('.ph-row'), 'a reload');
+  check('everything survives a reload', text('.ph-head h1') === 'All done today');
+
+  await go(f, '../src/index.html?demo&reset&today=2026-10-01');
+  await until(() => $('.ph-ritual'), 'the money banner');
+  $('.ph-ritual-head').click();
+  check('the banner opens its checklist', $('.ph-ritual-body [data-act=step]'));
+
+  // ---- sync, against the pretend server ---------------------------------
+  const [fred] = FAKE_ACCOUNTS;
+  const in$ = (fr, sel) => fr.contentDocument && fr.contentDocument.querySelector(sel);
+  const inText = (fr, sel) => (in$(fr, sel) ? in$(fr, sel).textContent.replace(/\s+/g, ' ').trim() : '');
+  const visible = (fr, sel) => !!in$(fr, sel) && in$(fr, sel).getClientRects().length > 0; // actually drawn
+  const server = () => JSON.parse(localStorage.getItem('lifehub:fake-server') || '{}')[fred.uid] || {};
+  function signIn(fr, password) {
+    const form = in$(fr, '.signin form');
+    form.email.value = fred.email;
+    form.password.value = password;
+    form.requestSubmit();
+  }
+  for (const k of Object.keys(localStorage)) if (k.startsWith('lifehub:fake')) localStorage.removeItem(k);
+  // The laptop as after step 2: real history on it, never synced.
+  localStorage.setItem('lifehub:fake:laptop', localStorage.getItem('lifehub:demo'));
+
+  f.style.width = '1440px';
+  await go(f, '../src/index.html?fake-sync=laptop&today=2026-10-01');
+  await until(() => $('.desk') && $('.sync-pill'), 'the laptop dashboard');
+  check('laptop: its own data shows at once, with a sign-in pill', text('.sync-pill') === 'Sign in to sync' && text('.streakbox .v') === '25 days');
+  $('.sync-pill').click();
+  check('the pill opens the sign-in form, which can be dismissed', visible(f, '.signin') && visible(f, '[data-f=cancel]'));
+  signIn(f, 'wrong');
+  await until(() => visible(f, '.signin .msg'), 'the error message');
+  check('a wrong password says so', inText(f, '.signin .msg') === 'That email and password don’t match.');
+  signIn(f, fred.password);
+  await until(() => !visible(f, '.signin') && $('.acct'), 'signed in');
+  await until(() => server().main, 'the upload');
+  check('signed in: the account line shows, the pill is gone', text('.acct').startsWith(`Signed in as ${fred.email}`) && !$('.sync-pill'));
+  check('the first sign-in uploaded the laptop history', server()['2026'].checks['2026-09-30'].mn === true);
+
+  $('.cell[data-id=gym][data-day="2026-10-01"]').click();
+  await until(() => (server()['2026'].checks['2026-10-01'] || {}).gym, 'the gym tick online');
+  check('a laptop tick reaches the server', true);
+
+  await go(g, '../src/index.html?fake-sync=phone&today=2026-10-01');
+  await until(() => visible(g, '.signin.forced'), 'the phone sign-in screen');
+  check('phone: nothing on it, so a full-screen sign-in with no way around it', !visible(g, '[data-f=cancel]'));
+  signIn(g, fred.password);
+  await until(() => in$(g, '.ph'), 'the phone check-in');
+  check('the phone gets the laptop data, today’s gym tick included', in$(g, '.ph-row.on[data-id=gym]'));
+
+  in$(g, '.ph-row[data-id=read]').click();
+  await until(() => $('.cell.done[data-id=read][data-day="2026-10-01"]'), 'the reading tick on the laptop');
+  check('a phone tick appears on the laptop by itself', true);
+
+  g.contentWindow.confirm = () => true;
+  const reloaded = new Promise((r) => g.addEventListener('load', r, { once: true }));
+  in$(g, '.acct [data-act=sign-out]').click();
+  await reloaded;
+  await until(() => visible(g, '.signin.forced'), 'the phone signed out');
+  check('signing out clears the phone and asks to sign in again', localStorage.getItem('lifehub:fake:phone') === null);
+  check('the laptop keeps its data', $('.cell.done[data-id=read][data-day="2026-10-01"]') && server().main);
+} catch (e) {
+  log.push({ name: e.message, ok: false });
+}
+
+const failed = log.filter((x) => !x.ok);
+out.textContent = `${failed.length ? 'FAIL' : 'PASS'} ${log.length - failed.length}/${log.length}\n` +
+  failed.map((x) => `✗ ${x.name}`).join('\n');
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Personal starting data: local folders, a OneDrive id and personal goals.
+# The repo will be public (GitHub Pages), so this never leaves the laptop.
+src/data/seed.local.js
+
+dist/
+__pycache__/
+screenshots/
+
+# Office lock files (e.g. ~$restore.rules while Word has firestore.rules open);
+# they carry the owner's full name.
+~$*
+
+# Claude Code's local settings for this folder.
+.claude/
