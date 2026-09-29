@@ -2,13 +2,13 @@
 // rituals, goals, and last month's wins.
 
 import {
-  addMonths, daysInMonth, isoWeek, longLabel, monthKey, monthName, shortLabel, weekDays,
-  weekRangeLabel, weekdayName, yearKey,
+  addMonths, isoWeek, longLabel, monthKey, monthName, shortLabel, weekDays,
+  weekRangeLabel, weekdayName,
 } from '../core/dates.js';
 import { habitSub, isDone, streak, todaySummary, weekCount, weekHistory, weeklyTarget } from '../core/habits.js';
 import { activeRun, history, lastRunDay, nextDue, progress, status } from '../core/rituals.js';
-import { goalsFor, measure, periodName } from '../core/goals.js';
 import { monthWins } from '../core/wins.js';
+import { goalCard } from './goals.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible, plural } from './html.js';
 import { lunaCard } from './luna.js';
 import { stepButton } from './steps.js';
@@ -135,32 +135,6 @@ function ritualCard(s, r, day, phone) {
     <h3>${esc(r.name)}</h3>
     ${body}
     ${buttons || doneToggle ? `<div class="buttons">${buttons}</div>${doneToggle}` : ''}
-  </section>`;
-}
-
-const EDIT_NOUN = { week: 'this week’s', month: 'this month’s', year: 'this year’s' };
-
-function goalCard(s, level, day) {
-  const { goals, carriedFrom } = goalsFor(s.goals, level, day);
-  const head = {
-    week: ['This week', `Week ${isoWeek(day).week}`],
-    month: [monthName(monthKey(day)), `Day ${Number(day.slice(8))} of ${daysInMonth(monthKey(day))}`],
-    year: [yearKey(day), 'From the vision board'],
-  }[level];
-  const rows = goals.map((g) => {
-    const m = measure(g, s, day);
-    const val = m.manual
-      ? `<button class="val" data-act="goal" data-id="${esc(g.id)}" data-title="${esc(g.title)}" data-pct="${Math.round(m.value * 100)}" title="Tap to update">${m.label}</button>`
-      : `<span class="val">${m.label}</span>`;
-    return `<div class="goal"><div class="top"><span>${esc(g.title)}</span>${val}</div><div class="bar"><i style="width:${Math.max(m.value * 100, 1)}%"></i></div>${
-      m.note ? `<div class="gnote">${esc(m.note)}</div>` : ''}</div>`;
-  }).join('');
-  return `
-  <section class="card goal-card ${level}">
-    <div class="top"><h3>${head[0]}</h3><div class="sub">${head[1]}</div></div>
-    ${rows || '<p class="desc">No goals yet.</p>'}
-    ${carriedFrom ? `<div class="carried">Carried over from ${periodName(level, carriedFrom)}.</div>` : ''}
-    <button class="btn text" data-act="goals" data-level="${level}">${rows && !carriedFrom ? 'Edit goals' : `Set ${EDIT_NOUN[level]} goals`}</button>
   </section>`;
 }
 

@@ -76,7 +76,8 @@ try {
   check('phone tick updates the headline', text('.ph-head h1') === '2 of 3 done');
   $('.ph-row[data-id=read]').click();
   check('all three makes it all done', text('.ph-head h1') === 'All done today');
-  check('no money banner once the review is done', !text('.ph').includes('Money review'));
+  check('no money banner once the review is done', ![...f.contentDocument.querySelectorAll('.ph-ritual:not(.calm)')].some((e) => e.textContent.includes('Money review')));
+  check('the phone lists every ritual and the three goal levels', $('.ph-ritual.calm') && f.contentDocument.querySelectorAll('.ph .goal-card').length === 3);
   check('the started weekly review gets a banner', text('.ph').includes('Weekly review due Sunday'));
   check('week tile follows', text('.tile:nth-child(2) .v') === '4/4');
 

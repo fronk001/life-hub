@@ -313,6 +313,14 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .ph-ritual-body .do-note { color: var(--amber-ink-2); }
 .ph-ritual-body .chip.part { background: var(--card); }
 
+.ph-ritual.calm { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+.ph-ritual.calm .s { color: var(--muted); }
+.ph-ritual.calm.overdue { background: var(--red-tint); color: var(--red-ink); border-color: transparent; }
+.ph-ritual.calm .ph-ritual-body .btn.outline, .ph-ritual.calm .ph-ritual-body .do,
+.ph-ritual.calm .ph-ritual-body .do-note { border-color: var(--line); color: var(--ink); }
+.ph-block { display: flex; flex-direction: column; gap: 10px; }
+.ph-block > .k { font-size: 13px; font-weight: 600; color: var(--muted); }
+.ph .goal-card { padding: 16px; border-radius: 16px; gap: 14px; }
 .ph-week { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 .ph-week .k { font-size: 13px; font-weight: 600; color: var(--muted); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px; }

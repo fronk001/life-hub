@@ -1,10 +1,12 @@
 // The phone check-in (mockup 2): one tap per habit, the Mongolian card on
-// top, any ritual that needs attention, and the week so far.
+// top, any ritual that needs attention, then all rituals, the goals and
+// the week so far.
 
 import { shortLabel } from '../core/dates.js';
 import { isDone, phoneHint, streak, todaySummary, weekCount, weeklyTarget } from '../core/habits.js';
 import { activeRun, dueWords, minutesLeft, needsAttention, progress, status } from '../core/rituals.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible } from './html.js';
+import { goalCard } from './goals.js';
 import { lunaCard } from './luna.js';
 import { stepButton } from './steps.js';
 
@@ -38,7 +40,7 @@ function habitRow(s, h, day) {
   </button>`;
 }
 
-function ritualBanner(s, r, day, phone, open) {
+function ritualBanner(s, r, day, phone, open, calm = false) {
   const st = status(r, s.runs, day);
   const run = activeRun(s.runs, r, day);
   const steps = r.steps || [];
@@ -48,20 +50,22 @@ function ritualBanner(s, r, day, phone, open) {
     const left = minutesLeft(r, run);
     line = `${p.done} of ${p.total} steps done${left ? ` · about ${left} min left` : ''}`;
   } else {
-    line = `Due ${shortLabel(st.due)} · tap to open`;
+    line = calm ? st.label : `Due ${shortLabel(st.due)} · tap to open`;
   }
+  if (calm && steps.length && st.kind !== 'done') line = `${st.label} · ${line}`;
   let body = '';
   if (open) {
     const stepsHtml = steps.map((x) => stepButton(s, r, x, run, day)).join('');
     const links = (r.launcherIds || []).map((id) => launcher(s, id)).filter((l) => launcherVisible(l, phone))
       .map((l) => launchLink(l, 'btn outline', l.short || l.label, { phone, ritualId: r.id })).join('');
     const doneBtn = steps.length ? '' : `<button class="btn outline" data-act="ritual-done" data-id="${esc(r.id)}">${run && run.done ? 'Undo' : 'Mark done'}</button>`;
-    body = `<div class="ph-ritual-body">${stepsHtml ? `<div class="steps">${stepsHtml}</div>` : ''}${links || doneBtn ? `<div class="buttons">${links}${doneBtn}</div>` : ''}</div>`;
+    const desc = calm && r.description ? `<p class="desc">${esc(r.description)}</p>` : '';
+    body = `<div class="ph-ritual-body">${desc}${stepsHtml ? `<div class="steps">${stepsHtml}</div>` : ''}${links || doneBtn ? `<div class="buttons">${links}${doneBtn}</div>` : ''}</div>`;
   }
   return `
-  <section class="ph-ritual${st.kind === 'overdue' ? ' overdue' : ''}">
+  <section class="ph-ritual${calm ? ' calm' : ''}${st.kind === 'overdue' ? ' overdue' : ''}">
     <button class="ph-ritual-head" data-act="expand" data-id="${esc(r.id)}" aria-expanded="${open}">
-      <span class="t">${esc(r.name)} ${dueWords(st)}</span><span class="s">${line}</span>
+      <span class="t">${esc(r.name)}${calm ? '' : ` ${dueWords(st)}`}</span><span class="s">${line}</span>
     </button>
     ${body}
   </section>`;
@@ -71,7 +75,9 @@ export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
   const habits = s.habits.filter((h) => !h.archived);
   const featured = habits.find((h) => h.featured);
   const rest = habits.filter((h) => h !== featured);
-  const urgent = s.rituals.filter((r) => !r.archived && needsAttention(r, s.runs, day));
+  const live = s.rituals.filter((r) => !r.archived);
+  const urgent = live.filter((r) => needsAttention(r, s.runs, day));
+  const calm = live.filter((r) => !urgent.includes(r));
   const tiles = habits.map((h) => `<div class="tile"><div class="v">${weekCount(s.checks, h, day)}/${weeklyTarget(h)}</div><div class="l">${esc(h.short || h.name)}</div></div>`).join('');
   return `
   <div class="ph">
@@ -83,6 +89,8 @@ export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
     ${featured ? featureCard(s, featured, day, phone) : ''}
     <div class="ph-list">${rest.map((h) => habitRow(s, h, day)).join('')}</div>
     ${urgent.map((r) => ritualBanner(s, r, day, phone, ui.expanded.has(r.id))).join('')}
+    ${calm.length ? `<div class="ph-block"><div class="k">Rituals</div>${calm.map((r) => ritualBanner(s, r, day, phone, ui.expanded.has(r.id), true)).join('')}</div>` : ''}
+    <div class="ph-block"><div class="k">What I’m working towards</div>${['week', 'month', 'year'].map((l) => goalCard(s, l, day)).join('')}</div>
     ${lunaCard(s, day, 'ph-luna')}
     <div class="ph-week">
       <div class="k">This week so far</div>
