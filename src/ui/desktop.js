@@ -10,6 +10,7 @@ import { activeRun, history, lastRunDay, nextDue, progress, status } from '../co
 import { goalsFor, measure, periodName } from '../core/goals.js';
 import { monthWins } from '../core/wins.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible, plural } from './html.js';
+import { lunaCard } from './luna.js';
 import { stepButton } from './steps.js';
 
 const days = (n) => plural(n, 'day');
@@ -192,6 +193,7 @@ export function renderDesktop({ s, day, phone, footer = '', sync = '' }) {
       <div class="section-head"><h2>What I’m working towards</h2><div class="muted">Every habit and ritual feeds a goal</div></div>
       <div class="grid3">${['week', 'month', 'year'].map((l) => goalCard(s, l, day)).join('')}</div>
     </div>
+    ${lunaCard(s, day)}
     ${winsFooter(s, day)}
     ${footer}
   </div>`;

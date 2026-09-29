@@ -285,7 +285,7 @@ try {
   const now = JSON.parse(f.contentWindow.localStorage.getItem('lifehub:dev'));
   const tracker = all('a[data-act=launch][data-ritual=money]').find((a) => a.textContent.includes('Portfolio tracker'));
   check('an older laptop record: new schedules, review buttons, and the tracker online',
-    now.version === 2 && text('.ritual:nth-child(1) .eyebrow') === 'Weekly · Monday' && now.rituals[2].steps[1].does === 'week-goals' &&
+    now.version === 3 && !!now.penalty && text('.ritual:nth-child(1) .eyebrow') === 'Weekly · Monday' && now.rituals[2].steps[1].does === 'week-goals' &&
     /^https:\/\/[^/]+\.streamlit\.app\//.test(tracker.getAttribute('href')) && now.launchers.find((x) => x.id === 'portfolio').where === 'everywhere');
 } catch (e) {
   log.push({ name: e.message, ok: false });

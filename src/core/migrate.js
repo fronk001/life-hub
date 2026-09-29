@@ -6,7 +6,9 @@
 // must be pure and idempotent: two devices doing it must agree, and a step
 // only touches what is still in its old shape. Bump VERSION with each step.
 
-export const VERSION = 2;
+import { defaultPenalty } from './penalty.js';
+
+export const VERSION = 3;
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -35,6 +37,11 @@ const STEPS = {
     for (const step of (review && review.steps) || []) {
       if (REVIEW_DOES[step.id] && !step.does) step.does = REVIEW_DOES[step.id];
     }
+  },
+  // 29 Sep 2026, Fred: every week goal missed costs 5 euros for Luna, from
+  // this week on (Monday 28 September).
+  3(s) {
+    if (!s.penalty) s.penalty = defaultPenalty();
   },
 };
 

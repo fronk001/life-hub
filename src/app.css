@@ -240,6 +240,21 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .wins .chips { display: flex; flex-wrap: wrap; gap: 10px; }
 .wins .chip { padding: 8px 14px; font-size: 14px; }
 
+.luna { padding: 22px 28px; display: flex; flex-direction: column; gap: 12px; }
+.luna .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.luna .sub { font-size: 14px; color: var(--muted); }
+.luna .owe { display: flex; align-items: baseline; gap: 10px; }
+.luna .big { font-family: var(--serif); font-size: 40px; font-weight: 600; color: var(--red-ink); line-height: 1; }
+.luna .big.ok { color: var(--green); }
+.luna .who { font-size: 15px; color: var(--muted); }
+.luna .weeks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.luna .amt { font-weight: 600; white-space: nowrap; }
+.luna .stake { color: var(--muted); }
+.luna .btn.inline { display: inline; min-height: 0; padding: 0; }
+.luna .buttons { max-width: 480px; }
+.ph-luna { padding: 16px; border-radius: 16px; gap: 10px; }
+.ph-luna .big { font-size: 32px; }
+
 @media (max-width: 1279px) {
   .row1 { grid-template-columns: minmax(0, 1fr); }
   .habits { grid-column: auto; }

@@ -5,6 +5,7 @@ import { shortLabel } from '../core/dates.js';
 import { isDone, phoneHint, streak, todaySummary, weekCount, weeklyTarget } from '../core/habits.js';
 import { activeRun, dueWords, minutesLeft, needsAttention, progress, status } from '../core/rituals.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible } from './html.js';
+import { lunaCard } from './luna.js';
 import { stepButton } from './steps.js';
 
 function headline({ done, total }) {
@@ -82,6 +83,7 @@ export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
     ${featured ? featureCard(s, featured, day, phone) : ''}
     <div class="ph-list">${rest.map((h) => habitRow(s, h, day)).join('')}</div>
     ${urgent.map((r) => ritualBanner(s, r, day, phone, ui.expanded.has(r.id))).join('')}
+    ${lunaCard(s, day, 'ph-luna')}
     <div class="ph-week">
       <div class="k">This week so far</div>
       <div class="tiles">${tiles}</div>

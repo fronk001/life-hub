@@ -121,3 +121,19 @@ export function setGoalPct(state, goalId, pct) {
   if (g) g.measure = { type: 'manual', pct: clampPct(pct) };
   return s;
 }
+
+// Records what Fred paid: `entries` = [{ key, amount, missed }] from owing().
+// The amount is frozen here, so later edits never change what was paid.
+export function markPaid(state, entries, day) {
+  const s = clone(state);
+  if (!s.penalty) return s;
+  s.penalty.paid = s.penalty.paid || {};
+  for (const e of entries) s.penalty.paid[e.key] = { amount: e.amount, missed: e.missed, day };
+  return s;
+}
+
+export function unmarkPaid(state, key) {
+  const s = clone(state);
+  if (s.penalty && s.penalty.paid) delete s.penalty.paid[key];
+  return s;
+}

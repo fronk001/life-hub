@@ -1,6 +1,7 @@
 // Boot: draw from this device's data straight away, then keep the screen
 // current — ticks, other devices' changes, the day turning over.
 
+import { owing } from '../core/penalty.js';
 import { reviewWeeks } from '../core/rituals.js';
 import { act, get, isDemo, load, subscribe, sync, today } from '../data/store.js';
 import { accountLine, closeSignIn, gate, openSignIn, signInForced, signInOpen, syncButton } from './account.js';
@@ -82,6 +83,8 @@ root.addEventListener('click', (e) => {
       break;
     }
     case 'goals': editGoals({ levels: [el.dataset.level], day: today() }); break;
+    case 'paid': act.markPaid(owing(get(), today())); break;
+    case 'unpaid': act.unmarkPaid(id); break;
     case 'do': doStep(id, el.dataset.step, el.dataset.does); break;
     case 'expand':
       if (ui.expanded.has(id)) ui.expanded.delete(id);

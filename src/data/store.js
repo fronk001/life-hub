@@ -78,6 +78,8 @@ export const act = {
   toggleRitualDone: (ritualId) => commit((s) => A.toggleRitualDone(s, ritualId, today(), Date.now())),
   setGoalPct: (goalId, pct) => commit((s) => A.setGoalPct(s, goalId, pct)),
   saveGoals: (level, period, goals) => commit((s) => A.saveGoals(s, level, period, goals)),
+  markPaid: (entries) => commit((s) => A.markPaid(s, entries, today())),
+  unmarkPaid: (key) => commit((s) => A.unmarkPaid(s, key)),
   setPlannedDays: (plan) => commit((s) => A.setPlannedDays(s, plan)),
 };
 

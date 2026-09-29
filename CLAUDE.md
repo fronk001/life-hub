@@ -32,6 +32,16 @@ Build order agreed with Fred (five steps; each stops for his review).
    (`ui/sheets.js`), and the weekly review's steps open them. Still to do: habits,
    rituals, steps, launchers (those change by an upgrade step for now, see below).
 
+**Luna's jar (29 Sep, Fred):** every *week* goal below 100% costs €5, paid to his wife Luna
+from the week of Mon 28 Sep, no cap. `core/penalty.js` (pure, tested) tallies it; `ui/luna.js`
+is the card on both views. A week is billed from its Sunday (a Monday review still bills
+last week); this week so far shows as "at stake". Unbilled weeks pile up until "I've paid"
+freezes the amount in `penalty.paid`. Nothing moves money: the button opens Luna's
+`revolut.me/<handle>?amount=<cents>&currency=EUR` (amount prefill **untested**; the amount
+is always shown). Her handle is personal: `penalty.revolut` in the record, set only by
+`upgradeLocal` in seed.local.js (not done yet, waiting for the handle). Record `version` 3.
+Carried-over week goals bill too; a monthly ritual as a week goal bills every week until done.
+
 29 Sep refinements (Fred): groceries moved to Mondays (first run Mon 5 Oct), the
 money review to "25th to end of month", the tracker button to its hosted copy, and
 the weekly review's steps now *do* things. Reached his live record through
