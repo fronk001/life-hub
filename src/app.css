@@ -121,7 +121,12 @@ button, a { touch-action: manipulation; }
 
 /* ---- desktop ----------------------------------------------------------- */
 
-.desk { max-width: 1440px; margin: 0 auto; padding: 48px 56px; display: flex; flex-direction: column; gap: 32px; }
+/* --band: the space above the header, where the sync button sits; --edge: the side margin. */
+.desk {
+  --band: 48px; --edge: 56px;
+  position: relative; max-width: 1440px; margin: 0 auto; padding: var(--band) var(--edge);
+  display: flex; flex-direction: column; gap: 32px;
+}
 
 .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
 .titles { display: flex; flex-direction: column; gap: 8px; }
@@ -229,7 +234,7 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
   .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 999px) {
-  .desk { padding: 32px 24px; }
+  .desk { --band: 32px; --edge: 24px; }
   .grid3 { grid-template-columns: minmax(0, 1fr); }
   .hgrid { grid-template-columns: 150px repeat(7, 36px) 56px minmax(0, 1fr); column-gap: 6px; }
   .cell { width: 36px; height: 36px; }
@@ -238,8 +243,9 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 /* ---- phone ------------------------------------------------------------- */
 
 .ph {
-  max-width: 480px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
-  padding: calc(40px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+  --band: 40px; --edge: 20px; --safe: env(safe-area-inset-top);
+  position: relative; max-width: 480px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+  padding: calc(var(--safe) + var(--band)) var(--edge) calc(28px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 20px;
 }
 .ph-head { display: flex; flex-direction: column; gap: 4px; }
@@ -287,16 +293,35 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 
 /* ---- sign-in and sync -------------------------------------------------- */
 
-/* Only there when there is something to say: signed out, offline, stuck. */
-.sync-pill {
-  position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; z-index: 10;
-  padding: 6px 12px; border: 0; border-radius: 999px;
-  font-size: 13px; font-weight: 600; background: var(--rest); color: var(--neutral-ink);
+/* The sync button (syncButton() in account.js), top right of both views, with
+   the Mongolian app's signs: solid green = in step; a green ring = on its way
+   (connecting, offline, a change still going up), nothing to do; red = needs
+   you. Words only when there is something to say. It sits in the band above
+   the header, its dot on the content's edge. */
+.sync {
+  position: absolute; z-index: 10; top: calc(var(--safe, 0px) + (var(--band) - 32px) / 2); right: calc(var(--edge) - 12px);
+  min-width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
 }
-button.sync-pill { cursor: pointer; }
-.sync-pill.dark { background: var(--ink); color: var(--paper); }
-.sync-pill.amber { background: var(--amber-tint); color: var(--amber-ink); }
-.sync-pill.red { background: var(--red-tint); color: var(--red-ink); }
+.sync::before, .sync-card .t::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sync.on::before, .sync-card.on .t::before { background: var(--green); }
+.sync.wait::before, .sync-card.wait .t::before { box-shadow: inset 0 0 0 1.5px var(--green); }
+.sync.red::before, .sync-card.red .t::before { background: var(--red-ink); }
+.sync.says { right: var(--edge); padding: 0 12px 0 10px; background: var(--rest); color: var(--neutral-ink); }
+.sync.says.red { background: var(--red-tint); color: var(--red-ink); }
+@media (hover: hover) { .sync:not(.says):hover { background: var(--rest); } }
+
+/* What a tap on the button says in words, just below it. */
+.sync-card {
+  position: absolute; z-index: 10; top: calc(var(--safe, 0px) + var(--band) / 2 + 22px); right: var(--edge);
+  width: 320px; max-width: calc(100% - 2 * var(--edge)); padding: 16px 18px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 12px 32px rgba(30, 29, 26, 0.14);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sync-card .t { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.sync-card p:not(.t) { font-size: 14px; line-height: 1.45; color: var(--muted); }
+.sync-card p.who { font-size: 13px; }
 
 .acct { font-size: 13px; color: var(--muted); text-align: center; }
 .acct button {

@@ -181,12 +181,13 @@ function winsFooter(s, day) {
   return `<section class="card wins"><h2>${monthName(prev)}, done</h2><div class="chips">${chips}</div></section>`;
 }
 
-export function renderDesktop({ s, day, phone, footer = '' }) {
+export function renderDesktop({ s, day, phone, footer = '', sync = '' }) {
   const habits = s.habits.filter((h) => !h.archived);
   const featured = habits.find((h) => h.featured);
   const rituals = s.rituals.filter((r) => !r.archived);
   return `
   <div class="desk">
+    ${sync}
     ${header(s, habits, featured, day)}
     <div class="row1">
       ${habitsCard(s, habits, day)}

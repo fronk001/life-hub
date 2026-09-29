@@ -2,7 +2,7 @@
 // current — ticks, other devices' changes, the day turning over.
 
 import { act, get, isDemo, load, subscribe, sync, today } from '../data/store.js';
-import { accountLine, closeSignIn, gate, openSignIn, signInForced, signInOpen, syncPill, syncProblem } from './account.js';
+import { accountLine, closeSignIn, gate, openSignIn, signInForced, signInOpen, syncButton } from './account.js';
 import { renderDesktop } from './desktop.js';
 import { renderPhone } from './phone.js';
 
@@ -10,7 +10,7 @@ const root = document.getElementById('app');
 const narrow = matchMedia('(max-width: 759px)');
 // A real phone (not a narrow laptop window): hides laptop-only launchers.
 const touchPhone = matchMedia('(hover: none) and (pointer: coarse)');
-const ui = { expanded: new Set() };
+const ui = { expanded: new Set(), syncOpen: false };
 let drawnDay = null;
 
 function render() {
@@ -25,11 +25,17 @@ function render() {
     return;
   }
   if (signInForced()) closeSignIn();
-  const ctx = { s, day: drawnDay, phone: touchPhone.matches, ui, footer: accountLine(st) };
+  const ctx = { s, day: drawnDay, phone: touchPhone.matches, ui, footer: accountLine(st), sync: syncButton(st, ui.syncOpen) };
   const phoneLayout = narrow.matches;
   root.className = phoneLayout ? 'is-phone' : 'is-desktop';
-  root.innerHTML = (phoneLayout ? renderPhone(ctx) : renderDesktop(ctx)) + syncPill(st) +
+  root.innerHTML = (phoneLayout ? renderPhone(ctx) : renderDesktop(ctx)) +
     (isDemo ? '<div class="demo-badge">Demo data</div>' : '');
+}
+
+function closeSyncCard() {
+  if (!ui.syncOpen) return;
+  ui.syncOpen = false;
+  render();
 }
 
 function signOut() {
@@ -66,9 +72,15 @@ root.addEventListener('click', (e) => {
       else ui.expanded.add(id);
       render();
       break;
-    case 'sign-in': openSignIn(); break;
+    case 'sync':
+      ui.syncOpen = !ui.syncOpen;
+      render();
+      break;
+    case 'sign-in':
+      ui.syncOpen = false;
+      openSignIn();
+      break;
     case 'sign-out': signOut(); break;
-    case 'sync-error': alert(syncProblem(sync.status())); break;
     case 'start-fresh':
       if (confirm('Start a new record online, from the starting set, with no history?\n\n' +
         'Only do this if your record is lost. If Life Hub has your ticks in another browser, sign in there instead.')) sync.startFresh();
@@ -89,6 +101,12 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) refr
 narrow.addEventListener('change', render);
 addEventListener('online', render);
 addEventListener('offline', render);
+// The sync card closes on a tap anywhere else, or Escape. A moment later, not
+// during the click: re-rendering then would drop a launch link's navigation.
+document.addEventListener('click', (e) => {
+  if (ui.syncOpen && !e.target.closest('.sync, .sync-card')) setTimeout(closeSyncCard, 0);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSyncCard(); });
 
 // The published copy keeps itself on the device (sw.js), so the installed
 // phone app opens instantly and offline. In src/ the version reads "dev" and

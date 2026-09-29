@@ -72,7 +72,7 @@ src/data/    store.js (URL switches, picks backend, actions API), engine.js (loc
              firebase-config.js (public web config, null = local-only), fake-backend.js,
              seed.local.js (git-ignored!), seed.example.js (public fallback), demo.js
 src/ui/      app.js (boot, click delegation), desktop.js, phone.js, html.js,
-             account.js (sign-in form, sync pill, account line, new-device screen)
+             account.js (sign-in form, sync button, account line, new-device screen)
 src/app.css  all styling; tokens on :root copied from the mockup
 src/fonts/   Fraunces + Instrument Sans, variable woff2, extracted from the mockup file
 src/sw.js    offline copy (published copy only); manifest.webmanifest; icons/ (tools/icons.py)
@@ -167,8 +167,17 @@ the folder to the current window instead of opening a new one
   unsynced local copy gives way.
   Another account signing in wipes the previous owner's copy first.
 - Sign out wipes this device's copy + queue (warns if the queue isn't empty).
-- UI: nothing when all is well; a pill top-right only for signed out / offline /
-  slow (>5 s) / error; "Signed in as … · Sign out" at the bottom of both views.
+- UI: the **sync button** (`syncButton()`, account.js), top right of both views
+  whenever sync is set up — Fred asked for it 29 Sep, to match the Mongolian app's
+  dot. Same signs: solid green = in step; green ring = on its way (starting,
+  connecting, offline, changes slow >5 s); red = needs him (signed out / never
+  signed in, error). Green, not Mongolian's blue: in Life Hub green means done.
+  Words only when there's something to say ("Sign in to sync", "Offline · 2 changes
+  saved here", "Syncing…", "Not syncing"). Red signed-out opens the sign-in form;
+  otherwise a tap opens a card saying the state in words + the account (closes on a
+  tap elsewhere or Escape, deferred so a launch link's navigation survives). It
+  sits in the band above the header (`--band`), dot on the content edge (`--edge`),
+  and scrolls with the page. "Signed in as … · Sign out" stays at the bottom.
   The sign-in form lives outside `#app` (re-renders would wipe typing); forced
   full-screen when the device has no data.
 - Tests can't reach real Firebase (no emulator without Node/Java, and Claude may not

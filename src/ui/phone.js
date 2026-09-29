@@ -68,7 +68,7 @@ function ritualBanner(s, r, day, phone, open) {
   </section>`;
 }
 
-export function renderPhone({ s, day, phone, ui, footer = '' }) {
+export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
   const habits = s.habits.filter((h) => !h.archived);
   const featured = habits.find((h) => h.featured);
   const rest = habits.filter((h) => h !== featured);
@@ -76,6 +76,7 @@ export function renderPhone({ s, day, phone, ui, footer = '' }) {
   const tiles = habits.map((h) => `<div class="tile"><div class="v">${weekCount(s.checks, h, day)}/${weeklyTarget(h)}</div><div class="l">${esc(h.short || h.name)}</div></div>`).join('');
   return `
   <div class="ph">
+    ${sync}
     <div class="ph-head">
       <div class="eyebrow">${shortLabel(day)} · Check-in</div>
       <h1>${headline(todaySummary(s.checks, habits, day))}</h1>

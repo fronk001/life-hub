@@ -1,6 +1,6 @@
-// Sign-in and sync status: the sign-in form, a small pill that appears only
-// when there is something to say, the account line at the bottom of the
-// page, and the screen a new device shows before it has any data.
+// Sign-in and sync status: the sync button in the top right corner, the
+// account line at the bottom of the page, the sign-in form, and the screen a
+// new device shows before it has any data.
 //
 // The form lives outside #app on purpose: the views are re-rendered whole on
 // every change, which would wipe a half-typed password.
@@ -9,18 +9,58 @@ import { sync } from '../data/store.js';
 import { esc, plural } from './html.js';
 
 const offline = (st) => st.mode === 'offline' || !navigator.onLine;
+const changes = (n) => `${n} ${plural(n, 'change')}`;
 
-export function syncPill(st) {
-  if (st.mode === 'off') return '';
+// Where sync stands, in the Mongolian app's signs: a solid dot when this
+// device is in step, a ring while it's on its way (connecting, offline, a
+// change still going up: nothing to do), red when it needs you. `words` show
+// on the button only when there is something to say; `name` and `note` fill
+// the card a tap opens. Signed out has no card: its button opens the form.
+function syncState(st) {
   if (st.mode === 'signed-out') {
-    return `<button class="sync-pill dark" data-act="sign-in">${st.claimed ? 'Signed out · Sign in' : 'Sign in to sync'}</button>`;
+    return { tone: 'red', words: st.claimed ? 'Signed out · Sign in' : 'Sign in to sync' };
   }
-  if (st.mode === 'error') return '<button class="sync-pill red" data-act="sync-error">Not syncing</button>';
+  if (st.mode === 'error') {
+    const hint = /permission/.test(st.error)
+      ? 'The database refused access. Check the “Paste the rules” step in SETUP.md.'
+      : 'Your changes are kept on this device and are sent again the next time Life Hub opens.';
+    return { tone: 'red', words: 'Not syncing', name: 'Not syncing', note: `Life Hub couldn’t sync (${esc(st.error)}). ${hint}` };
+  }
   if (offline(st)) {
-    return `<div class="sync-pill amber">Offline${st.waiting ? ` · ${st.waiting} ${plural(st.waiting, 'change')} saved here` : ''}</div>`;
+    return {
+      tone: 'wait', words: `Offline${st.waiting ? ` · ${changes(st.waiting)} saved here` : ''}`, name: 'Offline',
+      note: st.claimed
+        ? `Keep ticking: ${st.waiting ? `the ${changes(st.waiting)} saved here go` : 'changes go'} up by themselves once you’re back online, even if you close Life Hub meanwhile.`
+        : 'This device isn’t synced yet. Once you’re back online, sign in to sync it.',
+    };
   }
-  if (st.waiting && st.slow) return '<div class="sync-pill">Syncing…</div>';
-  return '';
+  if (st.waiting && st.slow) {
+    return {
+      tone: 'wait', words: 'Syncing…', name: 'Syncing…',
+      note: `${changes(st.waiting)} still on the way up. They’re kept on this device until the database has them, so nothing is lost.`,
+    };
+  }
+  if (st.mode !== 'live') {
+    return { tone: 'wait', words: '', name: 'Connecting…', note: 'Reaching the database. Keep ticking meanwhile: nothing is lost.' };
+  }
+  return { tone: 'on', words: '', name: 'Synced', note: 'Every tick goes up by itself, and every device you sign in on shows the same.' };
+}
+
+// Top right of both views, always there once sync is set up, so a device
+// that isn't in step can't pass for one that is. `open`: the card below it.
+export function syncButton(st, open = false) {
+  if (st.mode === 'off') return '';
+  const s = syncState(st);
+  const cls = `sync ${s.tone}${s.words ? ' says' : ''}`;
+  if (!s.name) return `<button class="${cls}" data-act="sign-in">${s.words}</button>`;
+  const button = `<button class="${cls}" data-act="sync" aria-expanded="${open}"${s.words ? '' : ` title="${s.name}"`}>${s.words}</button>`;
+  if (!open) return button;
+  return `${button}
+  <div class="sync-card ${s.tone}">
+    <p class="t">${s.name}</p>
+    <p>${s.note}</p>
+    ${st.email ? `<p class="who">Signed in as ${esc(st.email)}</p>` : ''}
+  </div>`;
 }
 
 const signOutLink = '<button data-act="sign-out">Sign out</button>';
@@ -44,13 +84,6 @@ export function gate(st) {
     ${st.canStartFresh ? '<p class="acct">No record anywhere? <button data-act="start-fresh">Start from the starting set</button></p>' : ''}
     ${st.email && st.mode !== 'connecting' ? `<p class="acct">Signed in as ${esc(st.email)} · ${signOutLink}</p>` : ''}
   </div>`;
-}
-
-export function syncProblem(st) {
-  const hint = /permission/.test(st.error)
-    ? 'The database refused access. Check the “Paste the rules” step in SETUP.md.'
-    : 'Your changes are kept on this device and are sent again the next time Life Hub opens.';
-  return `Life Hub couldn’t sync (${st.error}).\n\n${hint}`;
 }
 
 // ---- the sign-in form -----------------------------------------------------

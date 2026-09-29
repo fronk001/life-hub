@@ -101,11 +101,11 @@ the laptop is where your record comes from.
 
 1. Double-click **Start Life Hub.bat** as usual (if it's already open, reload
    the page).
-2. The dashboard appears as always, with a small black **Sign in to sync**
+2. The dashboard appears as always, with a small red **Sign in to sync**
    button at the top right. Click it.
 3. Sign in with the email and password from step 4.
-4. The button disappears, and the bottom of the page now says **Signed in as
-   (your email) · Sign out**. That's it: your data is online.
+4. The button shrinks to a green dot, and the bottom of the page now says
+   **Signed in as (your email) · Sign out**. That's it: your data is online.
 
 To see it with your own eyes: in the Firebase console, **Firestore** → **Data**.
 You'll find `users` → a long code (your account) → `data` → `main` (your
@@ -192,18 +192,23 @@ From now on:
 
 ## What the little signs mean
 
-Normally there's nothing to see. A pill appears at the top right only when
-something needs saying:
+The sync button sits in the top right corner, the same signs as the
+Mongolian app's dot. Tap it to see what it means in words.
 
-- **Sign in to sync**: this device isn't connected yet. Click to sign in.
-- **Signed out · Sign in**: the connection ended (say, after a password
-  change). Your ticks are kept on the device; sign in and they go up.
-- **Offline · 2 changes saved here**: no internet. Keep ticking; everything
-  goes up by itself once you're back online, even if you close the app
-  meanwhile.
-- **Syncing…**: changes are taking a while to reach the database.
-- **Not syncing** (red): the database refused something. Click it for the
-  reason, and tell Claude.
+- **Green dot**: this device is in step. Every tick goes up by itself.
+- **Green ring**: on its way, nothing to do: connecting for a moment when
+  the app opens, offline, or changes still going up. The last two come
+  with words:
+  - **Offline · 2 changes saved here**: no internet. Keep ticking; everything
+    goes up by itself once you're back online, even if you close the app
+    meanwhile.
+  - **Syncing…**: changes are taking a while to reach the database.
+- **Red**: needs you.
+  - **Sign in to sync**: this device isn't connected yet. Click to sign in.
+  - **Signed out · Sign in**: the connection ended (say, after a password
+    change). Your ticks are kept on the device; sign in and they go up.
+  - **Not syncing**: the database refused something. Tap it for the reason,
+    and tell Claude.
 
 **Sign out** (bottom of the page) removes Life Hub's data from *that device
 only*. Everything stays safe online, and signing in again brings it back.

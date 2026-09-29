@@ -11,6 +11,7 @@
 <iframe id="g" title="phone" style="width:390px;height:844px;border:0"></iframe>
 <script type="module">
 import { FAKE_ACCOUNTS } from '../src/data/fake-backend.js';
+import { syncButton } from '../src/ui/account.js';
 
 const f = document.getElementById('f');
 const g = document.getElementById('g');
@@ -87,6 +88,11 @@ try {
   const inText = (fr, sel) => (in$(fr, sel) ? in$(fr, sel).textContent.replace(/\s+/g, ' ').trim() : '');
   const visible = (fr, sel) => !!in$(fr, sel) && in$(fr, sel).getClientRects().length > 0; // actually drawn
   const server = () => JSON.parse(localStorage.getItem('lifehub:fake-server') || '{}')[fred.uid] || {};
+  // The sync button sits in the top right corner (scrollbar excluded).
+  const corner = (fr) => {
+    const r = in$(fr, '.sync').getBoundingClientRect();
+    return r.top < 50 && fr.contentDocument.documentElement.clientWidth - r.right < 70;
+  };
   function signIn(fr, password) {
     const form = in$(fr, '.signin form');
     form.email.value = fred.email;
@@ -99,18 +105,41 @@ try {
 
   f.style.width = '1440px';
   await go(f, '../src/index.html?fake-sync=laptop&today=2026-10-01');
-  await until(() => $('.desk') && $('.sync-pill'), 'the laptop dashboard');
-  check('laptop: its own data shows at once, with a sign-in pill', text('.sync-pill') === 'Sign in to sync' && text('.streakbox .v') === '25 days');
-  $('.sync-pill').click();
-  check('the pill opens the sign-in form, which can be dismissed', visible(f, '.signin') && visible(f, '[data-f=cancel]'));
+  await until(() => $('.desk') && $('.sync'), 'the laptop dashboard');
+  check('laptop: its own data shows at once, with a red sign-in button top right',
+    $('.sync.red') && text('.sync') === 'Sign in to sync' && corner(f) && text('.streakbox .v') === '25 days');
+  $('.sync').click();
+  check('the button opens the sign-in form, which can be dismissed', visible(f, '.signin') && visible(f, '[data-f=cancel]'));
   signIn(f, 'wrong');
   await until(() => visible(f, '.signin .msg'), 'the error message');
   check('a wrong password says so', inText(f, '.signin .msg') === 'That email and password don’t match.');
   signIn(f, fred.password);
   await until(() => !visible(f, '.signin') && $('.acct'), 'signed in');
   await until(() => server().main, 'the upload');
-  check('signed in: the account line shows, the pill is gone', text('.acct').startsWith(`Signed in as ${fred.email}`) && !$('.sync-pill'));
+  check('signed in: the account line shows', text('.acct').startsWith(`Signed in as ${fred.email}`));
   check('the first sign-in uploaded the laptop history', server()['2026'].checks['2026-09-30'].mn === true);
+
+  await until(() => $('.sync.on'), 'the button turning green');
+  check('in step: a green dot top right, no words', text('.sync') === '' && $('.sync').title === 'Synced' && corner(f));
+  $('.sync').click();
+  check('tapping the dot says so in words', visible(f, '.sync-card') && text('.sync-card .t') === 'Synced' &&
+    text('.sync-card').includes(`Signed in as ${fred.email}`) && $('.sync').getAttribute('aria-expanded') === 'true');
+  $('h1').click();
+  await until(() => !$('.sync-card'), 'the card closing');
+  check('a tap anywhere else closes the card', true);
+  $('.sync').click();
+  f.contentDocument.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('so does Escape', !$('.sync-card'));
+  // Offline is on its way, not wrong: a ring, never red. Green again once back.
+  const nav = f.contentWindow.navigator;
+  Object.defineProperty(nav, 'onLine', { configurable: true, get: () => false });
+  f.contentWindow.dispatchEvent(new Event('offline'));
+  await until(() => $('.sync.wait'), 'the ring while offline');
+  check('offline: a green ring that says so, not red', text('.sync') === 'Offline' && !$('.sync.red'));
+  delete nav.onLine;
+  f.contentWindow.dispatchEvent(new Event('online'));
+  await until(() => $('.sync.on'), 'green again once online');
+  check('back online: green again', true);
 
   $('.cell[data-id=gym][data-day="2026-10-01"]').click();
   await until(() => (server()['2026'].checks['2026-10-01'] || {}).gym, 'the gym tick online');
@@ -122,6 +151,8 @@ try {
   signIn(g, fred.password);
   await until(() => in$(g, '.ph'), 'the phone check-in');
   check('the phone gets the laptop data, today’s gym tick included', in$(g, '.ph-row.on[data-id=gym]'));
+  await until(() => in$(g, '.sync.on'), 'the phone’s green dot');
+  check('phone: the same green dot, top right', corner(g));
 
   in$(g, '.ph-row[data-id=read]').click();
   await until(() => $('.cell.done[data-id=read][data-day="2026-10-01"]'), 'the reading tick on the laptop');
@@ -134,6 +165,27 @@ try {
   await until(() => visible(g, '.signin.forced'), 'the phone signed out');
   check('signing out clears the phone and asks to sign in again', localStorage.getItem('lifehub:fake:phone') === null);
   check('the laptop keeps its data', $('.cell.done[data-id=read][data-day="2026-10-01"]') && server().main);
+
+  // ---- the sync button's other states, drawn directly --------------------
+  const draw = (st, open = false) => {
+    const t = document.createElement('template');
+    t.innerHTML = syncButton({ mode: 'live', email: fred.email, claimed: true, waiting: 0, slow: false, error: '', ...st }, open);
+    return (sel) => t.content.querySelector(sel);
+  };
+  check('no sync set up (demo, pretend dates): no button', syncButton({ mode: 'off' }) === '');
+  let d = draw({ mode: 'error', error: 'permission-denied' }, true);
+  check('refused: red, “Not syncing”, and the card points to the rules step',
+    d('.sync.red.says').textContent === 'Not syncing' && d('.sync-card.red').textContent.includes('“Paste the rules” step'));
+  d = draw({ waiting: 2, slow: true });
+  check('changes slow to go up: a ring, “Syncing…”', d('.sync.wait.says').textContent === 'Syncing…');
+  d = draw({ mode: 'offline', waiting: 2 }, true);
+  check('offline with changes waiting: counted on the button and in the card',
+    d('.sync.wait').textContent === 'Offline · 2 changes saved here' && d('.sync-card').textContent.includes('the 2 changes saved here go up'));
+  d = draw({ mode: 'connecting' });
+  check('connecting: a ring, no words', d('.sync.wait:not(.says)') && d('.sync').title === 'Connecting…');
+  d = draw({ mode: 'signed-out' });
+  check('signed out after syncing: red, straight to the sign-in form',
+    d('.sync.red[data-act=sign-in]').textContent === 'Signed out · Sign in' && !d('.sync-card'));
 } catch (e) {
   log.push({ name: e.message, ok: false });
 }
