@@ -179,7 +179,10 @@ the folder to the current window instead of opening a new one
   Safari, not the app.
 - Fred does the console clicks (SETUP.md). Claude never creates accounts or types
   passwords. The web config isn't secret; `firestore.rules` confines each account
-  to `users/{own uid}/data/{main|YYYY}`.
+  to `users/{own uid}/data/{main|YYYY}`, and — for the Mongolian app, which syncs
+  through this same project and account since 28 Sep (`../mongolian`, its CLAUDE.md
+  "Sync") — `users/{own uid}/mongolian/{main|items-N|YYYY}`. Both apps' rules live
+  in this one file; a change to either means Fred re-pastes the whole file.
 
 ## Offline copy + publishing (step 5)
 
@@ -197,7 +200,8 @@ the folder to the current window instead of opening a new one
 - iOS: links always open Safari, never another installed web app. So the
   Mongolian launcher on the phone likely opens Mongolian *in Safari*, whose
   storage is separate from Fred's installed Mongolian app: check with Fred at
-  launcher testing.
+  launcher testing. Since the Mongolian app syncs (28 Sep), signing in there once
+  inside Safari makes that copy show the same progress.
 
 ## Gotchas
 
