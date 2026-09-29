@@ -46,9 +46,9 @@ export function atStake(s, today) {
   return { monday, missed, total, amount: missed.length * p.euros };
 }
 
-// Revolut's payment link. The amount is in cents; whether Revolut fills it in
+// Revolut's payment link (no amount: just her page). The amount is in cents; whether Revolut fills it in
 // from the link is untested, so the screen always shows the amount as well.
 export function revolutLink(p, amount) {
   if (!p || !/^[A-Za-z0-9._-]+$/.test(p.revolut || '')) return null;
-  return `https://revolut.me/${p.revolut}?amount=${amount * 100}&currency=EUR`;
+  return `https://revolut.me/${p.revolut}${amount ? `?amount=${amount * 100}&currency=EUR` : ''}`;
 }

@@ -16,6 +16,7 @@ export function lunaCard(s, day, cls = '') {
   const owed = due.reduce((sum, w) => sum + w.amount, 0);
   const now = atStake(s, day);
   const link = revolutLink(p, owed);
+  const page = revolutLink(p, 0);
   const who = esc(p.payee || 'Luna');
   let body;
 
@@ -34,7 +35,8 @@ export function lunaCard(s, day, cls = '') {
     const last = lastKey ? p.paid[lastKey] : null;
     body = `<div class="owe"><div class="big ok">${eur(0)}</div><div class="who">owed to ${who}</div></div>
       <p class="desc">Settled up. ${last ? `Last paid ${eur(last.amount)} on ${shortLabel(last.day)} for week ${Number(lastKey.slice(6))}.` : 'Nothing paid yet.'}${
-  last ? ` <button class="btn text inline" data-act="unpaid" data-id="${esc(lastKey)}">Undo</button>` : ''}</p>`;
+  last ? ` <button class="btn text inline" data-act="unpaid" data-id="${esc(lastKey)}">Undo</button>` : ''}</p>
+      ${page ? `<div class="buttons"><a class="btn outline" href="${esc(page)}" target="_blank" rel="noopener">Open ${who}’s Revolut ${ARROW}</a></div>` : ''}`;
   }
 
   let stake = '';

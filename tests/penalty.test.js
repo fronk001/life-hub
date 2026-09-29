@@ -64,6 +64,7 @@ test('a manual goal below 100% is a miss; a ritual-linked one follows its run', 
 
 test('the Revolut link needs a plain handle, amount in cents; migration adds the rule once', () => {
   eq(revolutLink({ revolut: 'luna123' }, 10), 'https://revolut.me/luna123?amount=1000&currency=EUR');
+  eq(revolutLink({ revolut: 'luna123' }, 0), 'https://revolut.me/luna123', 'no amount: just her page');
   eq(revolutLink({}, 10), null);
   eq(revolutLink({ revolut: 'x/../y' }, 10), null);
   const m = migrate({ version: 2, habits: [], rituals: [], goals: [], checks: {}, runs: {} });
