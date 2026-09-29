@@ -5,21 +5,32 @@ rules_version = '2';
 // (Firestore → Rules) and press Publish — see SETUP.md, and SYNC.md in the
 // Mongolian app's folder.
 //
-// Each signed-in account can read and write only its own documents:
+// Each signed-in account can read and write only its own folders, and can
+// save only these documents in them:
 //   Life Hub     users/{its uid}/data/main and one document per year (2026, 2027, …)
 //   Mongolian    users/{its uid}/mongolian/main, items-0, items-1, … and one per year
 // Everything else, including anyone not signed in, is refused.
+//
+// Reading checks the account only, never the document's name. Both apps load
+// by asking for their whole folder at once, and Firestore refuses such a
+// request outright if the rule depends on names it can't know in advance:
+// the app then shows permission-denied and never loads (28 Sep, and again
+// on 29 Sep when this file still had the name check on reading).
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid}/data/{doc} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == uid
-                         && (doc == 'main' || doc.matches('[0-9]{4}'));
+      allow read: if request.auth != null
+                  && request.auth.uid == uid;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && (doc == 'main' || doc.matches('[0-9]{4}'));
     }
     match /users/{uid}/mongolian/{doc} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == uid
-                         && (doc == 'main' || doc.matches('items-[0-9]+') || doc.matches('[0-9]{4}'));
+      allow read: if request.auth != null
+                  && request.auth.uid == uid;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && (doc == 'main' || doc.matches('items-[0-9]+') || doc.matches('[0-9]{4}'));
     }
   }
 }

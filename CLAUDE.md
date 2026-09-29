@@ -179,10 +179,18 @@ the folder to the current window instead of opening a new one
   Safari, not the app.
 - Fred does the console clicks (SETUP.md). Claude never creates accounts or types
   passwords. The web config isn't secret; `firestore.rules` confines each account
-  to `users/{own uid}/data/{main|YYYY}`, and — for the Mongolian app, which syncs
-  through this same project and account since 28 Sep (`../mongolian`, its CLAUDE.md
-  "Sync") — `users/{own uid}/mongolian/{main|items-N|YYYY}`. Both apps' rules live
-  in this one file; a change to either means Fred re-pastes the whole file.
+  to its own `users/{own uid}/data/`, writing only `main|YYYY`, and — for the
+  Mongolian app, which syncs through this same project and account since 28 Sep
+  (`../mongolian`, its CLAUDE.md "Sync") — `users/{own uid}/mongolian/`, writing
+  only `main|items-N|YYYY`. Both apps' rules live in this one file; a change to
+  either means Fred re-pastes the whole file, so **the file must always match
+  what works in the console**.
+- **Reads must not check the document name.** Both apps listen to their whole
+  folder (a collection query), and Firestore refuses the entire query when the
+  rule depends on the document id: permission-denied, nothing loads. Name
+  checks go on `write` only. This bit twice: 28 Sep (fixed in the console, but
+  the file stayed wrong because Word had it locked) and 29 Sep (the Mongolian
+  rules were added to the stale file and Fred pasted it over the working rules).
 
 ## Offline copy + publishing (step 5)
 
