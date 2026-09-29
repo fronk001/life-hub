@@ -20,6 +20,12 @@ export const rituals = [
   },
 ];
 
+// The schedules Fred moved to on 29 Sep 2026 (core/migrate.js, step 2): the
+// money review between the 25th and the month's end, groceries on Mondays.
+// The rituals above keep the first rules, which are still supported.
+export const moneyWindow = { ...rituals[1], schedule: { type: 'monthly', from: 25, since: '2026-09-29' } };
+export const groceriesMonday = { ...rituals[0], schedule: { type: 'weekly', weekday: 1, since: '2026-09-29' } };
+
 export const byId = (list, id) => list.find((x) => x.id === id);
 
 export const state = (extra = {}) => ({ habits, rituals, goals: [], checks: {}, runs: {}, ...extra });

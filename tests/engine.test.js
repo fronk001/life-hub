@@ -4,6 +4,7 @@
 import { test, eq, ok } from './harness.js';
 import { state, ticks } from './fixtures.js';
 import { toggleHabit } from '../src/core/actions.js';
+import { migrate } from '../src/core/migrate.js';
 import { fromDocs, same } from '../src/core/sync.js';
 import { createEngine } from '../src/data/engine.js';
 import { FAKE_ACCOUNTS, fakeBackend, fakeServer } from '../src/data/fake-backend.js';
@@ -26,10 +27,10 @@ function memory(init = {}) {
 // Fred's laptop after step 2: real ticks in local storage, never synced.
 const laptopData = () => state({ version: 1, checks: ticks('mn', ['2026-09-28', '2026-09-29', '2026-09-30']) });
 
-async function device(server, { storage = memory(), seed = null, offline = false, name = 'd' } = {}) {
+async function device(server, { storage = memory(), seed = null, offline = false, name = 'd', upgrade } = {}) {
   const backend = fakeBackend({ server, storage, device: name });
   if (offline) backend.setOnline(false);
-  const engine = createEngine({ storage, key: KEY, backend, seed: async () => (seed ? clone(seed) : null) });
+  const engine = createEngine({ storage, key: KEY, backend, seed: async () => (seed ? clone(seed) : null), upgrade });
   await engine.load();
   return { backend, engine, storage, mode: () => engine.status().mode };
 }
@@ -214,4 +215,49 @@ test('another account signing in on the device never sees the previous data', as
   await until(() => laptop.mode() === 'empty', 'the other account has nothing');
   eq(laptop.engine.get(), null, 'Fred’s data is gone from the device');
   eq(online(server, OTHER.uid), {}, 'and was not uploaded to the other account');
+});
+
+// ---- upgrading a record written by older code (core/migrate.js) -----------
+
+const rituals = (d) => d.engine.get().rituals;
+const onlineMain = (server) => online(server).main || {};
+
+test('an older record online is upgraded by the first device with new code, and reaches the others', async () => {
+  const server = fakeServer();
+  const laptop = await laptopSignedIn(server); // old code: no upgrade
+  const phone = await device(server, { name: 'phone', upgrade: migrate });
+  await phone.engine.signIn(FRED.email, FRED.password);
+  await until(() => onlineMain(server).version === 2, 'the upgrade online');
+  eq(onlineMain(server).rituals.find((r) => r.id === 'groceries').schedule.weekday, 1);
+  await until(() => phone.engine.status().waiting === 0, 'confirmed');
+  await until(() => rituals(laptop).find((r) => r.id === 'money').schedule.from === 25, 'the laptop gets it');
+  ok(has(laptop, '2026-09-28', 'mn') && has(phone, '2026-09-28', 'mn'), 'history untouched');
+});
+
+test('an older copy on a synced device shows upgraded at once, but only the server’s copy is upgraded online', async () => {
+  const server = fakeServer();
+  await laptopSignedIn(server);
+  const storage = memory({ [KEY]: laptopData(), [`${KEY}:sync`]: { owner: FRED.uid, pending: [] } });
+  const phone = await device(server, { storage, name: 'phone', offline: true, upgrade: migrate });
+  eq(phone.engine.get().version, 2, 'upgraded on screen straight away');
+  eq(phone.engine.status().waiting, 0, 'nothing queued from a copy the server hasn’t confirmed');
+  phone.backend.setOnline(true);
+  dispatchEvent(new Event('online'));
+  await phone.engine.signIn(FRED.email, FRED.password);
+  await until(() => onlineMain(server).version === 2 && phone.engine.status().waiting === 0, 'the upgrade from the server’s copy');
+});
+
+test('a refused upgrade is queued once, not again with every snapshot', async () => {
+  const server = fakeServer();
+  const laptop = await laptopSignedIn(server);
+  const phone = await device(server, { name: 'phone', upgrade: migrate });
+  phone.backend.write = () => Promise.reject(Object.assign(new Error('permission-denied'), { code: 'permission-denied' }));
+  await phone.engine.signIn(FRED.email, FRED.password);
+  await until(() => phone.mode() === 'error', 'the refusal');
+  tick(laptop, 'gym', '2026-10-01');
+  tick(laptop, 'read', '2026-10-01');
+  await until(() => has(phone, '2026-10-01', 'read'), 'more snapshots');
+  eq(phone.engine.status().waiting, 1);
+  eq(phone.engine.get().version, 2, 'still shown upgraded');
+  eq(onlineMain(server).version, 1);
 });

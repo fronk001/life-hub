@@ -13,6 +13,10 @@
 //   nothing to upload (the phone, a fresh browser) waits until the data
 //   appears; it never puts a starting set online unless Fred asks.
 //
+// `upgrade` (core/migrate.js) brings a copy written by older code up to date.
+// It is applied to everything loaded, but the change is only recorded (and
+// so sent) from a copy the server has confirmed: see onDocs.
+//
 // `backend` is firebase.js in the app, fake-backend.js in tests:
 //   start(onUser)                  resolves once loaded; calls onUser(user|null) on every change
 //   signIn(email, pw) · signOut() · resetPassword(email)
@@ -26,7 +30,7 @@ const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slic
 // A change the server hasn't confirmed after this long gets a "Syncing…" pill.
 const SLOW_MS = 5000;
 
-export function createEngine({ storage, key, backend = null, seed }) {
+export function createEngine({ storage, key, backend = null, seed, upgrade = (s) => s }) {
   const META = `${key}:sync`; // { owner: uid this copy belongs to, pending: [{ id, at, ops }] }
   let state = null;
   let meta = { owner: null, pending: [] };
@@ -87,12 +91,22 @@ export function createEngine({ storage, key, backend = null, seed }) {
     if (canSend()) meta.pending.forEach(send);
   }
 
+  // Queue a change for the server (once this copy belongs to an account).
+  function record(ops) {
+    if (!ops.length || !backend || !readMeta().owner) return;
+    const batch = { id: newId(), at: Date.now(), ops };
+    meta.pending.push(batch);
+    saveMeta();
+    if (canSend()) send(batch);
+  }
+
   // Only ever uploads data this device already held, or a starting set Fred
   // asked for: a browser that happens to sign in first must not put a blank
   // record online for the real one to give way to.
   async function upload(u, data = state) {
     if (!data) {
-      fresh = await seed(); // offered on the "nothing online yet" screen, never used unasked
+      const s = await seed(); // offered on the "nothing online yet" screen, never used unasked
+      fresh = s && upgrade(s);
       if (u !== user) return;
       mode = 'empty';
       notify();
@@ -120,10 +134,15 @@ export function createEngine({ storage, key, backend = null, seed }) {
       saveMeta();
     }
     const next = fromDocs(docs);
-    if (!state || diff(state, next).length) {
-      state = next;
+    const up = upgrade(next);
+    if (!state || diff(state, up).length) {
+      state = up;
       save();
     }
+    // The online copy is older than this code: upgrade it, like any change.
+    // Not while changes are still queued: those may be the upgrade itself,
+    // and a refused one would come back in every snapshot and be queued again.
+    if (!readMeta().pending.length) record(diff(next, up));
     mode = 'live';
     notify();
   }
@@ -180,8 +199,11 @@ export function createEngine({ storage, key, backend = null, seed }) {
       }
       state = readJSON(key);
       readMeta();
-      if (!state && !backend) {
-        state = await seed();
+      if (!state && !backend) state = await seed();
+      // Shown upgraded straight away; when synced, the online copy is
+      // upgraded (and the change sent) once it arrives, in onDocs.
+      if (state) {
+        state = upgrade(state);
         save();
       }
       if (backend) start();
@@ -199,12 +221,7 @@ export function createEngine({ storage, key, backend = null, seed }) {
       const ops = diff(state, next);
       state = next;
       save();
-      if (ops.length && backend && readMeta().owner) {
-        const batch = { id: newId(), at: Date.now(), ops };
-        meta.pending.push(batch);
-        saveMeta();
-        if (canSend()) send(batch);
-      }
+      record(ops);
       notify();
     },
 
@@ -244,7 +261,7 @@ export function createEngine({ storage, key, backend = null, seed }) {
     // Another tab changed storage.
     receive(e) {
       if (e.key === key) {
-        state = e.newValue ? JSON.parse(e.newValue) : null;
+        state = e.newValue ? upgrade(JSON.parse(e.newValue)) : null;
         notify();
       } else if (e.key === META) {
         readMeta();

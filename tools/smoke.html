@@ -50,6 +50,9 @@ try {
   const gymWeek = $('.cell[data-id=gym]').closest('.hgrid').querySelector('.wk').textContent.trim();
   check('a past day this week can be ticked', gymWeek === '3 / 4');
 
+  // October's money review is due from the 25th, but can be done early.
+  check('the money review runs from the 25th to the month’s end', text('.ritual:nth-child(2) .eyebrow') === 'Monthly · 25th to end');
+  $('[data-act=step][data-step=numbers]').click();
   $('[data-act=step][data-step=wealth]').click();
   check('money review finishes without the optional step', /^Done/.test(text('.ritual:nth-child(2) .pill')));
   check('its week goal reads full', text('.goal-card.week .goal:nth-child(4) .val') === '3/3');
@@ -57,6 +60,10 @@ try {
   $('[data-act=start][data-id=review]').click();
   check('starting the weekly review shows its checklist', $('[data-act=step][data-id=review]'));
 
+  check('groceries, on Mondays, done this Monday', text('.ritual:nth-child(1) .eyebrow') === 'Weekly · Monday' &&
+    text('.ritual:nth-child(1) .pill') === 'Done · 35 min');
+  $('[data-act=ritual-done][data-id=groceries]').click();
+  check('undone, Monday’s run is overdue', text('.ritual:nth-child(1) .pill') === 'Overdue since Mon 28 Sep');
   $('[data-act=ritual-done][data-id=groceries]').click();
   check('groceries marked done', text('[data-act=ritual-done][data-id=groceries]').startsWith('Done'));
   check('groceries pill says Done', text('.ritual:nth-child(1) .pill') === 'Done');
@@ -77,10 +84,13 @@ try {
   await until(() => $('.ph') && $('.ph-row'), 'a reload');
   check('everything survives a reload', text('.ph-head h1') === 'All done today');
 
+  await go(f, '../src/index.html?demo&reset&today=2026-10-27');
+  await until(() => $('[data-act=expand][data-id=money]'), 'the money banner, its window open');
+  $('[data-act=expand][data-id=money]').click();
+  check('the banner opens its checklist', $('.ph-ritual-body [data-act=step][data-id=money]'));
+  // The laptop below starts from the 1 October demo. Drawn = saved.
   await go(f, '../src/index.html?demo&reset&today=2026-10-01');
-  await until(() => $('.ph-ritual'), 'the money banner');
-  $('.ph-ritual-head').click();
-  check('the banner opens its checklist', $('.ph-ritual-body [data-act=step]'));
+  await until(() => $('.ph-head'), 'the demo back on 1 October');
 
   // ---- sync, against the pretend server ---------------------------------
   const [fred] = FAKE_ACCOUNTS;
@@ -186,6 +196,97 @@ try {
   d = draw({ mode: 'signed-out' });
   check('signed out after syncing: red, straight to the sign-in form',
     d('.sync.red[data-act=sign-in]').textContent === 'Signed out · Sign in' && !d('.sync-card'));
+
+  // ---- the weekly review's steps, and setting goals ----------------------
+  f.style.width = '1440px';
+  await go(f, '../src/index.html?demo&reset&today=2026-10-04');
+  await until(() => $('.desk'), 'Sunday’s dashboard');
+  const all = (sel) => [...f.contentDocument.querySelectorAll(sel)];
+  const ticked = (step) => !!$(`[data-act=step][data-id=review][data-step=${step}][aria-pressed=true]`);
+  const submit = () => $('.sheet [type=submit]').click();
+  $('[data-act=start][data-id=review]').click();
+  const score = $('[data-step=score] + .step-do');
+  check('“Score the week” shows each habit’s quota', score && score.querySelectorAll('.chip').length === 4 && /of 4 hit/.test(score.textContent));
+
+  $('[data-does=week-goals]').click();
+  check('“Pick next week’s goals” opens week 41, starting from week 40’s',
+    visible(f, '.sheet') && text('.sheet h1') === 'Goals for week 41' && $('.sheet .gfrom') && all('.sheet .grow').length === 3);
+  $('.sheet [name=title]').value = 'Gym 3 times';
+  submit();
+  const w41 = saved().goals.filter((x) => x.period === '2026-W41');
+  check('saving sets them and ticks the step', !visible(f, '.sheet') && w41.length === 3 && w41[0].title === 'Gym 3 times' && ticked('goals'));
+  check('the step lists them; week 40 keeps its own',
+    text('[data-step=goals] + .step-do').includes('Gym 3 times') && saved().goals.filter((x) => x.period === '2026-W40').length === 3);
+
+  $('[data-does=plan]').click();
+  check('“Plan the days” lists the weekly habits, dressage on Saturday',
+    text('.sheet h1') === 'Plan the days' && all('.sheet .prow').length === 3 && $('.prow[data-id=ride] [data-wd="6"][aria-pressed=true]'));
+  $('.sheet [data-f=cancel]').click();
+  check('Cancel changes nothing', !visible(f, '.sheet') && !ticked('plan'));
+  $('[data-does=plan]').click();
+  $('.prow[data-id=gym] [data-wd="1"]').click();
+  $('.prow[data-id=gym] [data-wd="3"]').click();
+  check('picked days are counted against the quota', text('.prow[data-id=gym] .pcount') === '2 days for 4× a week' && $('.prow[data-id=gym] .pcount.short'));
+  submit();
+  const gymSub = () => $('.cell[data-id=gym]').closest('.hgrid').querySelector('.hsub').textContent;
+  check('saving the plan ticks the step and shows under the habit', ticked('plan') && gymSub() === '4× per week · Mon, Wed planned');
+
+  $('[data-does=check-goals]').click();
+  check('“Check month and year goals” opens both', text('.sheet h1') === 'Goals for October and 2026' && all('.sheet .gsec').length === 2);
+  $('.sheet').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Escape closes it, the step stays open', !visible(f, '.sheet') && !ticked('check'));
+  $('[data-act=step][data-step=score]').click();
+  $('[data-does=check-goals]').click();
+  submit();
+  check('the last step saved: the review is done', ticked('check') && /^Done/.test(text('.ritual:nth-child(3) .pill')));
+
+  $('.goal-card.month [data-act=goals]').click();
+  check('a goal card’s “Edit goals” opens its own period', text('.sheet h1') === 'Goals for October');
+  $('.sheet [data-f=add]').click();
+  $('.sheet [data-f=add]').click();
+  const [manual, linked] = all('.sheet .grow').slice(-2);
+  manual.querySelector('[name=title]').value = 'Run 10 km';
+  manual.querySelector('[name=pct]').value = '20';
+  linked.querySelector('[name=title]').value = 'Gym every week';
+  linked.querySelector('[name=measure]').value = 'habit:gym';
+  linked.querySelector('[name=measure]').dispatchEvent(new Event('change', { bubbles: true }));
+  check('a linked goal has no percentage to type', linked.querySelector('.gpct').hidden && !manual.querySelector('.gpct').hidden);
+  submit();
+  const oct = saved().goals.filter((x) => x.period === '2026-10');
+  check('new goals show on the card: by hand with its %, linked counting itself',
+    all('.goal-card.month .goal').some((x) => x.textContent.includes('Run 10 km') && x.querySelector('.val').textContent === '20%') &&
+    oct.find((x) => x.title === 'Gym every week').measure.habitId === 'gym');
+
+  $('.goal-card.year [data-act=goals]').click();
+  all('.sheet [data-f=remove]').forEach((b) => b.click());
+  submit();
+  check('removing every goal leaves the card empty', text('.goal-card.year').includes('No goals yet') && text('.goal-card.year [data-act=goals]') === 'Set this year’s goals');
+
+  f.style.width = '390px';
+  await go(f, '../src/index.html?demo&reset&today=2026-10-04');
+  await until(() => $('[data-act=expand][data-id=review]'), 'the review banner on Sunday');
+  $('[data-act=expand][data-id=review]').click();
+  check('on the phone the review’s steps have their buttons too', $('.ph-ritual-body [data-does=week-goals]') && $('.ph-ritual-body [data-step=score] + .step-do .chip'));
+  $('.ph-ritual-body [data-does=plan]').click();
+  check('and the editor fits the phone', visible(f, '.sheet') && $('.sheet-card').getBoundingClientRect().right <= 390);
+
+  // ---- an older record on the laptop is upgraded as it loads -------------
+  const old = saved();
+  old.version = 1;
+  const r = (id) => old.rituals.find((x) => x.id === id);
+  Object.assign(r('groceries'), { schedule: { type: 'weekly', weekday: 7 }, scheduleLabel: 'Weekly · Sunday' });
+  Object.assign(r('money'), { schedule: { type: 'monthly', rule: 'first-weekend' }, scheduleLabel: 'Monthly · first weekend' });
+  r('review').steps.forEach((x) => delete x.does);
+  Object.assign(old.launchers.find((x) => x.id === 'portfolio'), { url: 'http://localhost:8510/?app=portfolio&window=last12', where: 'laptop' });
+  f.contentWindow.localStorage.setItem('lifehub:dev', JSON.stringify(old));
+  f.style.width = '1440px';
+  await go(f, '../src/index.html?today=2026-10-04');
+  await until(() => $('.desk'), 'the upgraded copy');
+  const now = JSON.parse(f.contentWindow.localStorage.getItem('lifehub:dev'));
+  const tracker = all('a[data-act=launch][data-ritual=money]').find((a) => a.textContent.includes('Portfolio tracker'));
+  check('an older laptop record: new schedules, review buttons, and the tracker online',
+    now.version === 2 && text('.ritual:nth-child(1) .eyebrow') === 'Weekly · Monday' && now.rituals[2].steps[1].does === 'week-goals' &&
+    /^https:\/\/[^/]+\.streamlit\.app\//.test(tracker.getAttribute('href')) && now.launchers.find((x) => x.id === 'portfolio').where === 'everywhere');
 } catch (e) {
   log.push({ name: e.message, ok: false });
 }

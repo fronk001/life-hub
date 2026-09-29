@@ -5,11 +5,12 @@ import {
   addMonths, daysInMonth, isoWeek, longLabel, monthKey, monthName, shortLabel, weekDays,
   weekRangeLabel, weekdayName, yearKey,
 } from '../core/dates.js';
-import { isDone, streak, todaySummary, weekCount, weekHistory, weeklyTarget } from '../core/habits.js';
+import { habitSub, isDone, streak, todaySummary, weekCount, weekHistory, weeklyTarget } from '../core/habits.js';
 import { activeRun, history, lastRunDay, nextDue, progress, status } from '../core/rituals.js';
-import { goalsFor, measure } from '../core/goals.js';
+import { goalsFor, measure, periodName } from '../core/goals.js';
 import { monthWins } from '../core/wins.js';
-import { CHECK, CHECK_SM, esc, launchLink, launcher, launcherVisible, plural } from './html.js';
+import { CHECK, esc, launchLink, launcher, launcherVisible, plural } from './html.js';
+import { stepButton } from './steps.js';
 
 const days = (n) => plural(n, 'day');
 
@@ -47,7 +48,7 @@ function habitRow(s, h, day) {
     : `<span class="chip ${w.met ? 'full' : 'part'}">${w.count}/${w.target}</span>`)).join('');
   return `
     <div class="hgrid row">
-      <div><div class="hname">${esc(h.name)}</div><div class="hsub">${esc(h.sub || '')}</div></div>
+      <div><div class="hname">${esc(h.name)}</div><div class="hsub">${esc(habitSub(h))}</div></div>
       ${cells}
       <div class="wk${count >= target ? ' met' : ''}">${count} / ${target}</div>
       <div class="hist">${hist}</div>
@@ -96,13 +97,6 @@ function pillClass(st) {
   return 'amber';
 }
 
-function stepButton(r, step, run) {
-  const on = !!(run && run.steps && run.steps[step.id]);
-  return `<button class="step${on ? ' on' : ''}" data-act="step" data-id="${esc(r.id)}" data-step="${esc(step.id)}" aria-pressed="${on}">
-    <span class="box">${on ? CHECK_SM : ''}</span><span class="label">${esc(step.label)}${step.hint ? ` <span class="hint">(${esc(step.hint)})</span>` : ''}</span>
-  </button>`;
-}
-
 function ritualCard(s, r, day, phone) {
   const st = status(r, s.runs, day);
   const run = activeRun(s.runs, r, day);
@@ -115,7 +109,7 @@ function ritualCard(s, r, day, phone) {
     const last = lastRunDay(r, s.runs);
     body += `<p class="desc">${last ? `Last run ${shortLabel(last)}.` : 'No runs yet.'} Next run ${shortLabel(nextDue(r, s.runs, day))}.</p>`;
     const sq = history(r, s.runs, day).map((p) => {
-      const cls = p.done ? 'done' : p.current ? 'pending' : p.beforeStart ? 'before' : '';
+      const cls = p.done ? 'done' : p.beforeStart ? 'before' : p.current ? 'pending' : '';
       return `<div class="sq ${cls}" title="${esc(p.key)}"></div>`;
     }).join('');
     body += `<div class="histwrap"><div class="k">Last 8 ${monthly ? 'months' : 'weeks'}</div><div class="squares">${sq}</div></div>`;
@@ -125,7 +119,7 @@ function ritualCard(s, r, day, phone) {
     const p = progress(r, run);
     const w = p.total ? Math.max((p.done / p.total) * 100, 1) : 1;
     body += `<div class="progress"><div class="bar"><i style="width:${w}%"></i></div><div class="pv">${p.done} of ${p.total}</div></div>`;
-    body += `<div class="steps">${steps.map((x) => stepButton(r, x, run)).join('')}</div>`;
+    body += `<div class="steps">${steps.map((x) => stepButton(s, r, x, run, day)).join('')}</div>`;
   }
 
   const links = (r.launcherIds || []).map((id) => launcher(s, id)).filter((l) => launcherVisible(l, phone));
@@ -143,11 +137,7 @@ function ritualCard(s, r, day, phone) {
   </section>`;
 }
 
-const PERIOD_NAME = {
-  week: (p) => `Week ${Number(p.slice(6))}`,
-  month: (p) => monthName(p),
-  year: (p) => p,
-};
+const EDIT_NOUN = { week: 'this week’s', month: 'this month’s', year: 'this year’s' };
 
 function goalCard(s, level, day) {
   const { goals, carriedFrom } = goalsFor(s.goals, level, day);
@@ -168,7 +158,8 @@ function goalCard(s, level, day) {
   <section class="card goal-card ${level}">
     <div class="top"><h3>${head[0]}</h3><div class="sub">${head[1]}</div></div>
     ${rows || '<p class="desc">No goals yet.</p>'}
-    ${carriedFrom ? `<div class="carried">Carried over from ${PERIOD_NAME[level](carriedFrom)}. Set new ones in your weekly review.</div>` : ''}
+    ${carriedFrom ? `<div class="carried">Carried over from ${periodName(level, carriedFrom)}.</div>` : ''}
+    <button class="btn text" data-act="goals" data-level="${level}">${rows && !carriedFrom ? 'Edit goals' : `Set ${EDIT_NOUN[level]} goals`}</button>
   </section>`;
 }
 

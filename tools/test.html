@@ -10,7 +10,7 @@
 <script type="module">
 import { results, running } from '../tests/harness.js';
 
-const files = ['dates', 'habits', 'rituals', 'goals', 'wins', 'actions', 'sync', 'engine'];
+const files = ['dates', 'habits', 'rituals', 'goals', 'wins', 'actions', 'migrate', 'sync', 'engine'];
 for (const f of files) {
   try {
     await import(`../tests/${f}.test.js`);

@@ -110,6 +110,16 @@ button, a { touch-action: manipulation; }
 .step.on .label { color: var(--muted); text-decoration: line-through; }
 .hint { color: var(--muted); font-size: 13px; }
 
+/* Under a weekly review step (steps.js): the week's score, or the button that
+   does the step. Indented to line up with the step's words. */
+.step-do { padding: 0 4px 10px 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.do {
+  min-height: 36px; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 10px;
+  background: transparent; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.do:hover { background: var(--paper); }
+.do-note { font-size: 13px; color: var(--muted); }
+
 .bar { flex-grow: 1; height: 8px; border-radius: 999px; background: var(--rest); overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--green); }
 
@@ -218,8 +228,10 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .goal .bar { height: 6px; }
 .goal-card.month .bar > i { background: var(--amber); }
 .gnote, .carried { font-size: 13px; color: var(--muted); }
+.goal-card > .btn.text { margin-top: auto; }
 .goal-card.year { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.goal-card.year .sub, .goal-card.year .gnote, .goal-card.year .carried, .goal-card.year .desc { color: var(--night-muted); }
+.goal-card.year .sub, .goal-card.year .gnote, .goal-card.year .carried, .goal-card.year .desc,
+.goal-card.year > .btn.text { color: var(--night-muted); }
 .goal-card.year .bar { background: var(--night-line); }
 .goal-card.year .bar > i { background: var(--gold); }
 
@@ -282,7 +294,9 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .ph-ritual-body { padding: 0 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .ph-ritual-body .step { color: var(--ink); }
 .ph-ritual-body .box { background: var(--card); }
-.ph-ritual-body .btn.outline { border-color: var(--amber-ink-2); color: var(--amber-ink-2); }
+.ph-ritual-body .btn.outline, .ph-ritual-body .do { border-color: var(--amber-ink-2); color: var(--amber-ink-2); }
+.ph-ritual-body .do-note { color: var(--amber-ink-2); }
+.ph-ritual-body .chip.part { background: var(--card); }
 
 .ph-week { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 .ph-week .k { font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -361,3 +375,64 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .signin-card .btn.dark[disabled] { opacity: 0.6; cursor: default; }
 .signin-card .links { display: flex; justify-content: space-between; gap: 12px; }
 .signin-card .links .btn.text { align-self: auto; }
+
+/* ---- editors: goals and the plan of days (sheets.js) -------------------- */
+
+.sheet {
+  position: fixed; inset: 0; z-index: 20; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  background: rgba(30, 29, 26, 0.4);
+}
+.sheet-card {
+  width: 100%; max-width: 560px; margin: auto; padding: 28px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.sheet-card h1 { font-family: var(--serif); font-size: 30px; font-weight: 600; line-height: 1.1; }
+.sheet-card h1:focus { outline: none; }
+.sheet-card h2 { font-size: 17px; font-weight: 600; }
+.sheet-card .lead { font-size: 15px; line-height: 1.5; color: var(--muted); }
+/* 16px text: anything smaller and iPhone Safari zooms the page on focus. */
+.sheet-card input, .sheet-card select {
+  min-height: 44px; padding: 0 12px; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink); font: inherit; font-size: 16px;
+}
+.sheet-card input:focus-visible, .sheet-card select:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-tint); }
+.sheet-actions { display: flex; align-items: center; gap: 20px; padding-top: 4px; }
+.sheet-actions .btn.dark { flex: 1 1 auto; }
+
+.gsec { display: flex; flex-direction: column; gap: 10px; }
+.gsec + .gsec { padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.gfrom { font-size: 14px; line-height: 1.45; color: var(--muted); }
+.glist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.grow { padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.grow [name=title] { width: 100%; font-weight: 600; }
+.gmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.gmeasure { flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.gmeasure select { flex: 1; min-width: 0; }
+.gpct { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; }
+.gpct input { width: 80px; }
+.gdel {
+  margin-left: auto; min-height: 44px; padding: 0 4px; border: 0; background: none; cursor: pointer;
+  color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px;
+}
+.gadd { align-self: flex-start; }
+
+.plist { display: flex; flex-direction: column; gap: 16px; }
+.prow { display: flex; flex-direction: column; gap: 8px; }
+.ptop { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.pname { font-size: 17px; font-weight: 600; }
+.pcount { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.pcount.short { color: var(--amber-ink); }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.day {
+  min-height: 44px; padding: 0; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.day[aria-pressed=true] { background: var(--green); border-color: var(--green); color: var(--paper); }
+
+@media (max-width: 759px) {
+  .sheet { padding-left: 10px; padding-right: 10px; }
+  .sheet-card { padding: 24px 18px; }
+  .sheet-card h1 { font-size: 26px; }
+}

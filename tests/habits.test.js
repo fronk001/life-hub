@@ -1,7 +1,7 @@
 import { test, eq } from './harness.js';
 import { habits, byId, ticks } from './fixtures.js';
 import {
-  inPlayToday, phoneHint, streak, todaySummary, weekCount, weekHistory,
+  habitSub, inPlayToday, phoneHint, streak, todaySummary, weekCount, weekHistory,
 } from '../src/core/habits.js';
 
 const mn = byId(habits, 'mn');
@@ -53,4 +53,19 @@ test('phone hints', () => {
   eq(phoneHint({}, ride, '2026-10-01'), 'Planned for Saturday');
   eq(phoneHint(ticks('gym', ['2026-09-29']), gym, '2026-10-01'), 'Tuesday was a session · 4× per week');
   eq(phoneHint({}, gym, '2026-10-01'), '4× per week');
+});
+
+test('planned days stop counting once the week’s quota is met', () => {
+  const planned = { ...gym, plannedWeekdays: [1, 3, 5, 6] };
+  eq(inPlayToday({}, planned, '2026-10-03'), true, 'Saturday, planned');
+  eq(inPlayToday({}, planned, '2026-10-01'), false, 'Thursday, not planned');
+  const four = ticks('gym', ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01']);
+  eq(inPlayToday(four, planned, '2026-10-03'), false, 'Saturday, but four sessions already');
+});
+
+test('the line under a habit follows its plan', () => {
+  eq(habitSub({ ...gym, plannedWeekdays: [1, 2, 4, 6] }), '4× per week · Mon, Tue, Thu, Sat planned');
+  eq(habitSub(ride), '1× per week · Saturday planned');
+  eq(habitSub(gym), '4× per week');
+  eq(habitSub({ ...mn, sub: 'Daily · no exceptions' }), 'Daily · no exceptions');
 });

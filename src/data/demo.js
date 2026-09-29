@@ -2,7 +2,8 @@
 // Lives under its own storage key and shows a "Demo data" badge, so it can
 // never be mistaken for, or mixed into, the real record.
 
-import { addDays, addMonths, firstWeekendSunday, monthKey, weekKey, weekStart, weekday } from '../core/dates.js';
+import { addDays, addMonths, monthKey, weekKey, weekStart, weekday } from '../core/dates.js';
+import { dueDay, opensDay } from '../core/rituals.js';
 
 // Small seeded PRNG so the demo looks the same every time.
 function rng(seed) {
@@ -39,23 +40,38 @@ export async function buildDemo(today) {
     if (wd === 6 && r() > 0.15) tick(d, 'ride');
   }
 
+  // Runs on each ritual's own due day, so the demo follows the schedules.
   const at = (d, h) => Date.parse(`${d}T${String(h).padStart(2, '0')}:00:00Z`);
   const done = (d, minutes) => ({ steps: {}, startedAt: at(d, 9), done: true, doneDay: d, doneAt: at(d, 9) + minutes * 60000, minutes });
+  const ritual = (id) => s.rituals.find((x) => x.id === id);
+  const groceries = ritual('groceries');
+  const review = ritual('review');
+  const money = ritual('money');
   s.runs.groceries = {};
   s.runs.review = {};
-  for (let sun = addDays(start, 6); sun < today; sun = addDays(sun, 7)) {
-    if (r() > 0.12) s.runs.groceries[weekKey(sun)] = done(sun, 35);
+  for (let mon = start; mon < today; mon = addDays(mon, 7)) {
+    // The odd week skipped, but never this one: the mockup shows a good week.
+    const g = groceries && dueDay(groceries, mon);
+    if (g && g < today && (addDays(mon, 7) > today || r() > 0.12)) s.runs.groceries[weekKey(g)] = done(g, 35);
+    const sun = review && dueDay(review, mon);
+    if (!sun || sun >= today) continue;
     const rev = done(sun, 18 + Math.floor(r() * 8));
     rev.steps = { score: true, goals: true, plan: true, check: true };
     s.runs.review[weekKey(sun)] = rev;
   }
 
-  const prev = addMonths(monthKey(today), -1);
-  const m = done(firstWeekendSunday(prev), 52);
-  m.steps = { numbers: true, stocks: true, wealth: true };
-  s.runs.money = { [prev]: m };
-  const due = firstWeekendSunday(monthKey(today));
-  if (today <= due) s.runs.money[monthKey(today)] = { steps: { numbers: true }, startedAt: Date.now() - 10 * 60000 };
+  if (money) {
+    // Last month's review, done two days before its due day; this month's
+    // started, with one step ticked, while its window is open.
+    const prev = `${addMonths(monthKey(today), -1)}-01`;
+    const m = done(addDays(dueDay(money, prev), -2), 52);
+    m.steps = { numbers: true, stocks: true, wealth: true };
+    s.runs.money = { [monthKey(prev)]: m };
+    const opens = opensDay(money, today) || addDays(dueDay(money, today), -7);
+    if (today >= opens && today <= dueDay(money, today)) {
+      s.runs.money[monthKey(today)] = { steps: { numbers: true }, startedAt: Date.now() - 10 * 60000 };
+    }
+  }
 
   s.demo = true;
   return s;

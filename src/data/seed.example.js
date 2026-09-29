@@ -1,9 +1,11 @@
 // Generic starting set, committed so the public repo runs out of the box.
 // The real one is seed.local.js, which is git-ignored.
 
+import { VERSION } from '../core/migrate.js';
+
 export function buildSeed(today) {
   return {
-    version: 1,
+    version: VERSION,
     launchers: [],
     habits: [
       {

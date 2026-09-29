@@ -4,7 +4,8 @@
 import { shortLabel } from '../core/dates.js';
 import { isDone, phoneHint, streak, todaySummary, weekCount, weeklyTarget } from '../core/habits.js';
 import { activeRun, dueWords, minutesLeft, needsAttention, progress, status } from '../core/rituals.js';
-import { CHECK, CHECK_SM, esc, launchLink, launcher, launcherVisible } from './html.js';
+import { CHECK, esc, launchLink, launcher, launcherVisible } from './html.js';
+import { stepButton } from './steps.js';
 
 function headline({ done, total }) {
   if (done === 0) return 'Nothing ticked yet';
@@ -50,10 +51,7 @@ function ritualBanner(s, r, day, phone, open) {
   }
   let body = '';
   if (open) {
-    const stepsHtml = steps.map((x) => {
-      const on = !!(run && run.steps && run.steps[x.id]);
-      return `<button class="step${on ? ' on' : ''}" data-act="step" data-id="${esc(r.id)}" data-step="${esc(x.id)}" aria-pressed="${on}"><span class="box">${on ? CHECK_SM : ''}</span><span class="label">${esc(x.label)}${x.hint ? ` <span class="hint">(${esc(x.hint)})</span>` : ''}</span></button>`;
-    }).join('');
+    const stepsHtml = steps.map((x) => stepButton(s, r, x, run, day)).join('');
     const links = (r.launcherIds || []).map((id) => launcher(s, id)).filter((l) => launcherVisible(l, phone))
       .map((l) => launchLink(l, 'btn outline', l.short || l.label, { phone, ritualId: r.id })).join('');
     const doneBtn = steps.length ? '' : `<button class="btn outline" data-act="ritual-done" data-id="${esc(r.id)}">${run && run.done ? 'Undo' : 'Mark done'}</button>`;

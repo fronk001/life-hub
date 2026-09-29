@@ -76,6 +76,13 @@ export function daysInMonth(mKey) {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
+// The nth day of a month, or its last day when the month is shorter.
+export function monthDay(mKey, n) {
+  const [y, m] = mKey.split('-').map(Number);
+  return keyOf(y, m, Math.min(n, daysInMonth(mKey)));
+}
+export const lastDay = (mKey) => monthDay(mKey, 31);
+
 export function addMonths(mKey, n) {
   const [y, m] = mKey.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1 + n, 1));
@@ -93,7 +100,8 @@ export function firstWeekendSunday(mKey) {
 
 // ---- labels ---------------------------------------------------------------
 
-export const weekdayName = (key) => WEEKDAYS[weekday(key) - 1];
+export const dayName = (n) => WEEKDAYS[n - 1]; // 1 = Monday … 7 = Sunday
+export const weekdayName = (key) => dayName(weekday(key));
 export const weekdayShort = (key) => weekdayName(key).slice(0, 3);
 export const monthName = (mKey) => MONTHS[Number(mKey.slice(5, 7)) - 1];
 const monthShort = (key) => monthName(monthKey(key)).slice(0, 3);

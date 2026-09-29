@@ -1,6 +1,7 @@
 import { test, eq } from './harness.js';
-import { state, ticks } from './fixtures.js';
-import { goalsFor, measure } from '../src/core/goals.js';
+import { moneyWindow, state, ticks } from './fixtures.js';
+import { saveGoals } from '../src/core/actions.js';
+import { goalsFor, measure, periodName } from '../src/core/goals.js';
 
 const g = (level, period, m, id = `${level}-${period}`) => ({ id, level, period, title: id, measure: m });
 
@@ -35,4 +36,26 @@ test('ritual-linked week goal follows the checklist', () => {
 
 test('manual goals show their percentage', () => {
   eq(measure(g('year', '2026', { type: 'manual', pct: 35 }), state(), '2026-10-01'), { value: 0.35, label: '35%', manual: true });
+});
+
+test('an emptied period stays empty instead of carrying the previous goals over', () => {
+  const goals = [g('week', '2026-W40', { type: 'manual', pct: 1 })];
+  const s = saveGoals(state({ goals }), 'week', '2026-W41', []);
+  eq(goalsFor(s.goals, 'week', '2026-10-06'), { goals: [], carriedFrom: null });
+  eq(goalsFor(s.goals, 'week', '2026-10-13'), { goals: [], carriedFrom: null }, 'and the week after follows the empty one');
+  eq(goalsFor(s.goals, 'week', '2026-10-01').goals.length, 1, 'week 40 keeps its own');
+});
+
+test('a year goal linked to a ritual counts only periods that came due', () => {
+  const s = (runs) => state({ rituals: [moneyWindow], runs });
+  const goal = g('year', '2026', { type: 'ritual', ritualId: 'money' });
+  eq(measure(goal, s({}), '2026-09-29').label, '—', 'nothing due yet');
+  const sep = { money: { '2026-09': { done: true } } };
+  eq(measure(goal, s(sep), '2026-10-10').label, '100%', 'October isn’t due yet');
+  eq(measure(goal, s(sep), '2026-11-20').label, '50%', 'October missed');
+  eq(measure(goal, s({}), '2026-10-01').label, '0%', 'September is late');
+});
+
+test('period names', () => {
+  eq([periodName('week', '2026-W41'), periodName('month', '2026-10'), periodName('year', '2026')], ['Week 41', 'October', '2026']);
 });

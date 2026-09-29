@@ -7,7 +7,7 @@ look like the mockup, and it must be fast** (no loading screens).
 
 Single user, non-technical: explain things plainly, in prose.
 
-## Status (28 Sep 2026)
+## Status (29 Sep 2026)
 
 Build order agreed with Fred (five steps; each stops for his review).
 
@@ -23,11 +23,19 @@ Build order agreed with Fred (five steps; each stops for his review).
    manifest + icon, offline copy (`sw.js`), `tools/build.py`, Pages workflow.
    28 Sep: repo public, Pages live (verified: page, sw.js stamped, seed.local.js
    404), Fred installed it on his iPhone. Left: launcher tests on the real phone.
-   Only Mongolian's "Open app" shows there now; Numbers + Wealth Excel sit in the
-   Money review card, which the phone shows from Thu 1 Oct (monthly: ≤3 days
-   before its due day, Sun 4 Oct). Hosted `?demo` has no launchers (it builds on
-   seed.example.js), so it can't stand in for that test.
-4. Edit forms (add/edit/archive habits, rituals, steps, launchers, goals).
+   Mongolian's "Open app" shows there; Numbers, Portfolio tracker + Wealth Excel sit
+   in the Money review banner, which the phone shows while its window is open
+   (25th to month end) or while it's late. Hosted `?demo` has no launchers (it builds
+   on seed.example.js), so it can't stand in for that test.
+4. ⏳ Edit forms. 29 Sep, from Fred's first week of use: **goals** (any level, from
+   each goal card and from the weekly review) and the **plan of days** are editable
+   (`ui/sheets.js`), and the weekly review's steps open them. Still to do: habits,
+   rituals, steps, launchers (those change by an upgrade step for now, see below).
+
+29 Sep refinements (Fred): groceries moved to Mondays (first run Mon 5 Oct), the
+money review to "25th to end of month", the tracker button to its hosted copy, and
+the weekly review's steps now *do* things. Reached his live record through
+`core/migrate.js` step 2 + `upgradeLocal` in seed.local.js (the tracker address).
 
 ## Run
 
@@ -56,6 +64,8 @@ copy *and its queue of unsent changes*.
 Run both test commands after any change to `src/core/`, `src/data/` or `src/ui/`;
 the Firebase check too after touching `firebase.js` or bumping the SDK version;
 build + sw-check after touching `sw.js`, `index.html`, `build.py` or adding files.
+A new module also goes into index.html's `modulepreload` list (else the first paint
+waits on a chain of requests).
 
 **Publishing = `git push` to `main`** (repo `fronk001/life-hub`, local git identity
 `Fred` + his relay email, same as the Mongolian repo). The workflow builds and
@@ -66,13 +76,15 @@ all the tests first.
 ## Layout
 
 ```
-src/core/    dates habits rituals goals wins actions sync   ← pure logic, no DOM, all tested
+src/core/    dates habits rituals goals wins actions sync migrate  ← pure logic, no DOM, all tested
 src/data/    store.js (URL switches, picks backend, actions API), engine.js (local copy,
              queue, sync rules), firebase.js (the only file that knows Firebase),
              firebase-config.js (public web config, null = local-only), fake-backend.js,
              seed.local.js (git-ignored!), seed.example.js (public fallback), demo.js
 src/ui/      app.js (boot, click delegation), desktop.js, phone.js, html.js,
-             account.js (sign-in form, sync button, account line, new-device screen)
+             account.js (sign-in form, sync button, account line, new-device screen),
+             steps.js (ritual checklists; the weekly review's step buttons),
+             sheets.js (editors: goals, plan of days; outside #app like the sign-in form)
 src/app.css  all styling; tokens on :root copied from the mockup
 src/fonts/   Fraunces + Instrument Sans, variable woff2, extracted from the mockup file
 src/sw.js    offline copy (published copy only); manifest.webmanifest; icons/ (tools/icons.py)
@@ -89,12 +101,23 @@ it takes ~ms). All user text goes through `esc()`. State changes only via
 
 ## Data model (localStorage key `lifehub:v1`)
 
-`{ launchers, habits, rituals, goals, checks, runs }`
+`{ version, launchers, habits, rituals, goals, checks, runs }`
+- `version` — shape of the record (`core/migrate.js` VERSION, now 2).
 - `checks['2026-10-01'].mn = true` — a habit tick on a logical day.
+- Habit `plannedWeekdays: [1, 3, 6]` (1 = Mon) — set in the weekly review's "Plan the
+  days"; stays until changed. Its `sub` line is then computed (`habitSub`).
+- Ritual `schedule`: `{ type: 'weekly', weekday }` · `{ type: 'monthly', rule:
+  'first-weekend' }` · `{ type: 'monthly', from: 25 }` (window: 25th → last day = due
+  day). Optional `since`: the day the schedule began (see Rules). Steps may carry
+  `does: score | week-goals | plan | check-goals` (what the step's button opens).
 - `runs.money['2026-10'] = { startedAt, steps:{id:true}, done, doneDay, doneAt, minutes }`
   keyed by period (`2026-W40` weekly, `2026-10` monthly).
 - Goals: `{ level: week|month|year, period, title, measure }`, measure is
   `manual {pct}` or linked `habit {habitId}` / `ritual {ritualId}` (computed, never typed).
+  `saveGoals` replaces one period's list; an emptied period keeps one `archived`
+  marker so it stays empty instead of carrying the previous period's goals over.
+  Goals accumulate in `main` (~200 a year, ~30 KB): fine for many years; if `main`
+  ever nears 1 MiB, move past periods' goals into the year documents.
 - `lifehub:v1:sync` = `{ owner: uid, pending: [{ id, at, ops }] }`. No owner = local
   data never synced (the laptop's pre-sync record).
 
@@ -111,10 +134,32 @@ per-document limits (1 MiB, 40k index entries) forever.
 - **Numbers are real.** History started empty on 28 Sep 2026; nothing is backfilled
   or invented. Weeks before a habit/ritual existed render as "—", never as misses.
   Year goals for weekly habits count only completed full weeks.
-- **`activeDay`** (rituals.js): a period whose due day fell before the ritual existed
-  was never owed, so the money review created 28 Sep is due 4 Oct, not "overdue since 6 Sep".
+- **`activeDay`** (rituals.js) decides which period a ritual's run belongs to:
+  - a period due before the ritual existed, or before its schedule's `since`, was
+    never owed (`owed()`): moving groceries to Mondays on Tue 29 Sep didn't make
+    Mon 28 Sep overdue — its first Monday is 5 Oct. History shows such periods as "—".
+  - **Late:** a missed run stays active for `LATE_DAYS` after its due day (weekly 3,
+    monthly 15), shown as overdue, and counts for the period it was due in. Without
+    it a ritual due on its period's last day (the Sunday review, the month-end money
+    review) could never be late. So a Sunday review done Monday scores last week and
+    plans this one (`reviewWeeks`).
 - Monthly "first weekend" = first Saturday of the month + the Sunday after (a lone
-  Sunday the 1st doesn't count).
+  Sunday the 1st doesn't count). Still supported; nothing uses it since 29 Sep.
+- A windowed ritual (`from: 25`) is amber "Due …" from the 25th, and the phone
+  shows it for the whole window.
+- **Changing the live record's shape**: the starting set (seed) only applies to a
+  brand-new record, so a schedule/step change reaches Fred's data through a step in
+  `core/migrate.js` (pure, idempotent, bump VERSION). The engine applies `upgrade`
+  to everything it loads, but records (sends) the change only from a copy the server
+  confirmed, and not while changes are queued — a refused write would otherwise be
+  re-queued with every snapshot (tested). Anything naming a personal address goes in
+  seed.local.js's `upgradeLocal` instead, which only the laptop runs (app-version
+  "dev"; the phone never requests that file).
+- Goals: the review plans the week after the one it closes, and its "check goals"
+  step opens the month and year of that next Monday. Goals carried over from an
+  earlier period open in the editor as copies with new ids.
+- Planned days: a weekly habit counts towards "x of y done" on its planned days
+  only, and not at all once the week's quota is met.
 - Ritual duration = first step/launch → completion; only shown between 2 min and 8 h.
   Optional steps (e.g. "stock purchases, if any") never hold a run open.
 - Launch links: the click handler defers `startRitual` with `setTimeout` — re-rendering
@@ -134,8 +179,14 @@ per-document limits (1 MiB, 40k index entries) forever.
 | Mongolian app | `https://fronk001.github.io/mongolian/` | both |
 | Groceries | `claude://code/new?folder=…groceries-agent&q=/groceries-run` | laptop |
 | Numbers | `https://www.icloud.com/numbers/`; phone `numbers://` (**untested**) | both |
-| Portfolio tracker | `http://localhost:8510/?app=portfolio&window=last12` (only while it runs) | laptop |
+| Portfolio tracker | hosted Streamlit copy `https://<app>.streamlit.app/?app=portfolio&window=last12` (address in seed.local.js; private, asks to sign in; keeps the query through sign-in) | both |
 | Wealth Excel | `ms-excel:ofe\|u\|https://d.docs.live.net/<cid>/Current%20Wealth%20Portfolio.xlsx` | both |
+
+The tracker link was `localhost:8510` until 29 Sep: that only answers while the
+tracker's `Start Portfolio Tracker.bat` runs, and Fred uses the hosted copy on both
+laptop and phone. Fred finds the hosted copy very slow (Streamlit Cloud: sleeps after
+12 h, reruns Python on every click) and asked about moving it to Firebase — a
+question for the tracker project (`~/Desktop/Portfolio tracker`), not this one.
 
 Known limits of the Claude link: it pre-fills the prompt (Fred presses Enter) and
 always asks to confirm the folder. On Windows, if Claude is already open it may add

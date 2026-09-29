@@ -1,7 +1,7 @@
 // Habits: quotas, streaks and what is "in play" today. Pure functions over
 // `checks`, the record of every tick: { '2026-09-28': { mn: true, gym: true } }.
 
-import { addDays, diffDays, weekDays, weekStart, weekday, weekdayName } from './dates.js';
+import { addDays, dayName, diffDays, weekDays, weekStart, weekday, weekdayName } from './dates.js';
 
 export const isDone = (checks, day, id) => !!(checks[day] && checks[day][id]);
 
@@ -53,16 +53,34 @@ export function weekHistory(checks, habit, today, n = 4) {
   return out;
 }
 
-const planned = (habit) => habit.plannedWeekdays || [];
+// The weekdays a weekly habit is planned on (1 = Monday … 7 = Sunday), set in
+// the weekly review. The plan stays until the next review changes it.
+export const planned = (habit) => habit.plannedWeekdays || [];
+
+// "Saturday" / "Mon, Tue, Thu, Sat"
+export function planDays(habit) {
+  const p = [...planned(habit)].sort();
+  return p.length === 1 ? dayName(p[0]) : p.map((d) => dayName(d).slice(0, 3)).join(', ');
+}
+
+// "Saturday planned" / "Mon, Tue, Thu, Sat planned"
+export const planLabel = (habit) => (planned(habit).length ? `${planDays(habit)} planned` : '');
+
+// The line under a habit's name: its own words, or for a weekly habit with a
+// plan, the quota and the planned days (which change from week to week).
+export function habitSub(habit) {
+  if (habit.freq.type === 'weekly' && planned(habit).length) return `${freqLabel(habit)} · ${planLabel(habit)}`;
+  return habit.sub || freqLabel(habit);
+}
 
 // Whether a habit counts towards today's "x of y done". Daily habits always
-// do. A weekly habit with planned days only counts on those days; one without
-// counts until this week's quota is met. Anything ticked today counts.
+// do. A weekly habit counts until this week's quota is met, and when it has
+// planned days, only on those. Anything ticked today counts.
 export function inPlayToday(checks, habit, today) {
   if (isDone(checks, today, habit.id)) return true;
   if (habit.freq.type === 'daily') return true;
-  if (planned(habit).length) return planned(habit).includes(weekday(today));
-  return !weekMet(checks, habit, today);
+  if (weekMet(checks, habit, today)) return false;
+  return !planned(habit).length || planned(habit).includes(weekday(today));
 }
 
 export function todaySummary(checks, habits, today) {
@@ -85,5 +103,5 @@ export function phoneHint(checks, habit, today) {
   }
   const last = habit.freq.type === 'weekly' ? lastDoneThisWeek(checks, habit.id, today) : null;
   if (last) return `${weekdayName(last)} was a session · ${freqLabel(habit)}`;
-  return habit.sub || freqLabel(habit);
+  return habitSub(habit);
 }

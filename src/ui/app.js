@@ -1,10 +1,12 @@
 // Boot: draw from this device's data straight away, then keep the screen
 // current — ticks, other devices' changes, the day turning over.
 
+import { reviewWeeks } from '../core/rituals.js';
 import { act, get, isDemo, load, subscribe, sync, today } from '../data/store.js';
 import { accountLine, closeSignIn, gate, openSignIn, signInForced, signInOpen, syncButton } from './account.js';
 import { renderDesktop } from './desktop.js';
 import { renderPhone } from './phone.js';
+import { editGoals, planDays, sheetOpen } from './sheets.js';
 
 const root = document.getElementById('app');
 const narrow = matchMedia('(max-width: 759px)');
@@ -38,6 +40,18 @@ function closeSyncCard() {
   render();
 }
 
+// A weekly review step's button: open the screen that does the step, and
+// tick the step once it's saved there.
+function doStep(ritualId, stepId, does) {
+  const r = get().rituals.find((x) => x.id === ritualId);
+  if (!r) return;
+  const { plans } = reviewWeeks(r, get().runs, today());
+  const onSave = () => act.setStep(ritualId, stepId, true);
+  if (does === 'week-goals') editGoals({ levels: ['week'], day: plans, onSave });
+  else if (does === 'check-goals') editGoals({ levels: ['month', 'year'], day: plans, onSave });
+  else if (does === 'plan') planDays({ onSave });
+}
+
 function signOut() {
   const { waiting } = sync.status();
   const lost = waiting
@@ -67,6 +81,8 @@ root.addEventListener('click', (e) => {
       if (v !== null && v.trim() !== '' && Number.isFinite(Number(v))) act.setGoalPct(id, Number(v));
       break;
     }
+    case 'goals': editGoals({ levels: [el.dataset.level], day: today() }); break;
+    case 'do': doStep(id, el.dataset.step, el.dataset.does); break;
     case 'expand':
       if (ui.expanded.has(id)) ui.expanded.delete(id);
       else ui.expanded.add(id);
@@ -121,8 +137,8 @@ function keepOnDevice() {
     // The very first copy taking over is not an update: the page is current.
     if (!controlled) { controlled = true; return; }
     // A new version: reload to show it, unless that would wipe a half-typed
-    // sign-in; then wait until the app is out of sight.
-    if (document.hidden || !signInOpen()) location.reload();
+    // sign-in or goal; then wait until the app is out of sight.
+    if (document.hidden || !(signInOpen() || sheetOpen())) location.reload();
     else document.addEventListener('visibilitychange', () => location.reload(), { once: true });
   });
 }

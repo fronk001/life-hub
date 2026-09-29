@@ -2,23 +2,32 @@
 // (a percentage) or linked to a habit or ritual, in which case its progress is
 // calculated from real ticks and never typed in.
 
-import { addDays, daysInMonth, diffDays, monthKey, weekKey, weekStart, yearKey } from './dates.js';
+import { addDays, daysInMonth, diffDays, monthKey, monthName, weekKey, weekStart, yearKey } from './dates.js';
 import { isDone, weekCount, weekMet, weeklyTarget } from './habits.js';
-import { activeRun, periodKey, progress } from './rituals.js';
+import { activeRun, dueDay, owed, periodKey, progress } from './rituals.js';
 
 export const periodOf = (level, day) => ({ week: weekKey, month: monthKey, year: yearKey }[level](day));
 
-// Goals for the current period. When none are set yet, the most recent
-// earlier set carries over, so a card is never empty on the 1st.
-export function goalsFor(goals, level, today) {
-  const current = periodOf(level, today);
-  const mine = goals.filter((g) => g.level === level && !g.archived);
-  const now = mine.filter((g) => g.period === current);
-  if (now.length || !mine.length) return { goals: now, carriedFrom: null };
+// "Week 41" · "October" · "2026"
+export const periodName = (level, period) => ({
+  week: (p) => `Week ${Number(p.slice(6))}`,
+  month: (p) => monthName(p),
+  year: (p) => p,
+}[level](period));
+
+// Goals for the period containing `day`. When none are set yet, the most
+// recent earlier set carries over, so a card is never empty on the 1st.
+// A period emptied on purpose keeps one archived marker (saveGoals in
+// actions.js): it counts as set, so it stays empty instead of carrying over.
+export function goalsFor(goals, level, day) {
+  const current = periodOf(level, day);
+  const mine = goals.filter((g) => g.level === level);
+  const active = (p) => mine.filter((g) => g.period === p && !g.archived);
+  if (mine.some((g) => g.period === current)) return { goals: active(current), carriedFrom: null };
   const earlier = mine.map((g) => g.period).filter((p) => p < current).sort();
-  if (!earlier.length) return { goals: [], carriedFrom: null };
   const from = earlier[earlier.length - 1];
-  return { goals: mine.filter((g) => g.period === from), carriedFrom: from };
+  if (!from || !active(from).length) return { goals: [], carriedFrom: null };
+  return { goals: active(from), carriedFrom: from };
 }
 
 const frac = (a, b) => ({ value: b ? Math.min(a / b, 1) : 0, label: `${a}/${b}` });
@@ -68,12 +77,23 @@ function ritualMeasure(level, ritual, runs, today) {
     // A finished run reads as full even if an optional step was skipped.
     return run && run.done ? frac(p.total, p.total) : frac(p.done, p.total);
   }
+  // Year: of this year's periods that came due (and were owed), the share
+  // done. A period whose due day is still ahead only counts once it's done.
   const mine = runs[ritual.id] || {};
-  const done = Object.entries(mine).filter(([k, r]) => r.done && k.startsWith(yearKey(today))).length;
-  const start = ritual.createdDay && ritual.createdDay.startsWith(yearKey(today)) ? ritual.createdDay : `${yearKey(today)}-01-01`;
-  const keys = new Set();
-  for (let d = start; d <= today; d = addDays(d, 1)) keys.add(periodKey(ritual, d));
-  return pct(done, keys.size);
+  const year = yearKey(today);
+  const periods = new Map();
+  for (let d = `${year}-01-01`; d <= today; d = addDays(d, 1)) if (!periods.has(periodKey(ritual, d))) periods.set(periodKey(ritual, d), d);
+  let due = 0;
+  let done = 0;
+  for (const [key, d] of periods) {
+    const when = dueDay(ritual, d);
+    const ran = !!(mine[key] && mine[key].done);
+    if (yearKey(when) !== year || !owed(ritual, when) || (when >= today && !ran)) continue;
+    due += 1;
+    if (ran) done += 1;
+  }
+  if (!due) return { value: 0, label: '—', note: 'counts from its first due day' };
+  return pct(done, due);
 }
 
 export function measure(goal, state, today) {

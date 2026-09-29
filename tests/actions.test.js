@@ -1,6 +1,8 @@
 import { test, eq } from './harness.js';
 import { state, MIN } from './fixtures.js';
-import { setGoalPct, startRitual, toggleHabit, toggleRitualDone, toggleStep } from '../src/core/actions.js';
+import {
+  saveGoals, setGoalPct, setPlannedDays, setStep, startRitual, toggleHabit, toggleRitualDone, toggleStep,
+} from '../src/core/actions.js';
 
 const T0 = Date.UTC(2026, 9, 4, 10, 0);
 
@@ -50,4 +52,38 @@ test('groceries: launch starts the clock, mark done stops it', () => {
 test('manual goal progress is clamped to 0–100', () => {
   const s = setGoalPct(state({ goals: [{ id: 'g', level: 'year', measure: { type: 'manual', pct: 10 } }] }), 'g', 140);
   eq(s.goals[0].measure.pct, 100);
+});
+
+test('saving a period’s goals replaces that period only, in the order given', () => {
+  const goals = [
+    { id: 'a', level: 'week', period: '2026-W40', title: 'Old', measure: { type: 'manual', pct: 5 } },
+    { id: 'b', level: 'month', period: '2026-10', title: 'Month', measure: { type: 'manual', pct: 5 } },
+  ];
+  const s = saveGoals(state({ goals }), 'week', '2026-W40', [
+    { id: 'c', title: '  Gym 4 times ', measure: { type: 'habit', habitId: 'gym' } },
+    { id: 'd', title: '', measure: { type: 'manual', pct: 10 } },
+    { id: 'e', title: 'Vision board', measure: { type: 'manual', pct: 140 } },
+  ]);
+  eq(s.goals.map((x) => x.id), ['b', 'c', 'e'], 'the untitled row is dropped');
+  eq(s.goals[1], { id: 'c', level: 'week', period: '2026-W40', title: 'Gym 4 times', measure: { type: 'habit', habitId: 'gym' } });
+  eq(s.goals[2].measure, { type: 'manual', pct: 100 });
+  eq(saveGoals(s, 'week', '2026-W40', []).goals.filter((x) => x.level === 'week').map((x) => x.archived), [true], 'emptied: one marker');
+});
+
+test('the plan of days: sorted, no doubles, and no days means any day', () => {
+  let s = setPlannedDays(state(), { gym: [6, 1, 4, 1, 2] });
+  eq(s.habits.find((h) => h.id === 'gym').plannedWeekdays, [1, 2, 4, 6]);
+  eq(s.habits.find((h) => h.id === 'ride').plannedWeekdays, [6], 'a habit not in the plan is left alone');
+  s = setPlannedDays(s, { ride: [] });
+  eq('plannedWeekdays' in s.habits.find((h) => h.id === 'ride'), false);
+});
+
+test('a step can be set on purpose, not only flipped', () => {
+  let s = setStep(state(), 'review', 'a', true, '2026-10-04', T0);
+  s = setStep(s, 'review', 'a', true, '2026-10-04', T0 + MIN);
+  eq(s.runs.review['2026-W40'].steps, { a: true }, 'ticking a ticked step keeps it ticked');
+  s = setStep(s, 'review', 'b', true, '2026-10-04', T0 + 20 * MIN);
+  eq([s.runs.review['2026-W40'].done, s.runs.review['2026-W40'].minutes], [true, 20]);
+  s = setStep(s, 'review', 'a', false, '2026-10-04', T0 + 21 * MIN);
+  eq(s.runs.review['2026-W40'].done, false);
 });
