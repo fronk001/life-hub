@@ -3,7 +3,7 @@
 // the week so far.
 
 import { shortLabel } from '../core/dates.js';
-import { isDone, phoneHint, streak, todaySummary, weekCount, weeklyTarget } from '../core/habits.js';
+import { habitStreak, isDone, phoneHint, todaySummary, weekCount, weeklyTarget } from '../core/habits.js';
 import { activeRun, dueWords, minutesLeft, needsAttention, progress, status } from '../core/rituals.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible } from './html.js';
 import { goalCard } from './goals.js';
@@ -16,13 +16,15 @@ function headline({ done, total }) {
   return `${done} of ${total} done`;
 }
 
+const streakText = (st) => `${st.current}-${st.unit} streak`;
+
 function featureCard(s, h, day, phone) {
   const f = h.featured;
   const done = isDone(s.checks, day, h.id);
   const l = launcher(s, h.launcherId);
   return `
   <section class="ph-feature">
-    <div class="top"><div class="t">${esc(f.phoneTitle || h.name)}</div><div class="s">${streak(s.checks, h.id, day).current}-day streak</div></div>
+    <div class="top"><div class="t">${esc(f.phoneTitle || h.name)}</div><div class="s">${streakText(habitStreak(s.checks, h, day))}</div></div>
     <div class="row">
       ${launcherVisible(l, phone) ? launchLink(l, 'btn light', l.short || l.label, { phone }) : ''}
       <button class="btn ghost-light${done ? ' on' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${day}" aria-pressed="${done}">${done ? 'Done' : 'Mark done'}</button>
@@ -36,7 +38,7 @@ function habitRow(s, h, day) {
   <button class="ph-row${done ? ' on' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${day}" aria-pressed="${done}">
     <span class="box">${done ? CHECK : ''}</span>
     <span class="main"><span class="n">${esc(h.name)}</span><span class="s">${esc(phoneHint(s.checks, h, day))}</span></span>
-    <span class="c">${weekCount(s.checks, h, day)}/${weeklyTarget(h)}</span>
+    <span class="c">${weekCount(s.checks, h, day)}/${weeklyTarget(h, day)}</span>
   </button>`;
 }
 
@@ -78,7 +80,7 @@ export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
   const live = s.rituals.filter((r) => !r.archived);
   const urgent = live.filter((r) => needsAttention(r, s.runs, day));
   const calm = live.filter((r) => !urgent.includes(r));
-  const tiles = habits.map((h) => `<div class="tile"><div class="v">${weekCount(s.checks, h, day)}/${weeklyTarget(h)}</div><div class="l">${esc(h.short || h.name)}</div></div>`).join('');
+  const tiles = habits.map((h) => `<div class="tile"><div class="v">${weekCount(s.checks, h, day)}/${weeklyTarget(h, day)}</div><div class="l">${esc(h.short || h.name)}</div></div>`).join('');
   return `
   <div class="ph">
     ${sync}
@@ -88,6 +90,7 @@ export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
     </div>
     ${featured ? featureCard(s, featured, day, phone) : ''}
     <div class="ph-list">${rest.map((h) => habitRow(s, h, day)).join('')}</div>
+    <button class="btn text ph-edit" data-act="habits">Edit habits</button>
     ${urgent.map((r) => ritualBanner(s, r, day, phone, ui.expanded.has(r.id))).join('')}
     ${calm.length ? `<div class="ph-block"><div class="k">Rituals</div>${calm.map((r) => ritualBanner(s, r, day, phone, ui.expanded.has(r.id), true)).join('')}</div>` : ''}
     <div class="ph-block"><div class="k">What I’m working towards</div>${['week', 'month', 'year'].map((l) => goalCard(s, l, day)).join('')}</div>

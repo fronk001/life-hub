@@ -33,6 +33,15 @@ export function fakeServer({ storage = null, key = 'lifehub:fake-server' } = {})
   }
   return {
     docs: (uid) => clone(all[uid] || {}),
+    // Another app's documents for this account (tests: the Mongolian app's
+    // year documents). `key` = `${uid}/${app}`, never a Life Hub uid.
+    appDocs: (uid, app) => clone(all[`${uid}/${app}`] || {}),
+    putApp(uid, app, id, data) {
+      const mine = (all[`${uid}/${app}`] = all[`${uid}/${app}`] || {});
+      mine[id] = clone(data);
+      if (storage) storage.setItem(key, JSON.stringify(all));
+      tell();
+    },
     apply(uid, writes, DEL) {
       const mine = (all[uid] = all[uid] || {});
       for (const w of writes) mine[w.id] = w.merge ? applyMerge(mine[w.id] || {}, w.data, DEL) : clone(w.data);
@@ -56,6 +65,7 @@ export function fakeBackend({ server, storage = null, device = 'a', accounts = F
   const known = {};    // uid -> documents as last received from the server
   const queue = [];    // writes not yet delivered: { uid, writes, resolve, reject }
   const listeners = new Set();
+  const appListeners = new Set();
 
   function view(uid) {
     const docs = clone(known[uid] || {});
@@ -78,6 +88,11 @@ export function fakeBackend({ server, storage = null, device = 'a', accounts = F
       known[l.uid] = server.docs(l.uid);
       l.heard = true;
       emit(l);
+    }
+    for (const l of appListeners) {
+      const docs = server.appDocs(l.uid, l.app);
+      const rows = Object.assign({}, ...l.years.map((y) => (docs[y] && docs[y].history) || {}));
+      later(() => { if (appListeners.has(l)) l.onRows(rows); });
     }
   }
 
@@ -148,6 +163,17 @@ export function fakeBackend({ server, storage = null, device = 'a', accounts = F
       if (online) refresh();
       else emit(l);
       return () => listeners.delete(l);
+    },
+
+    listenApp(uid, app, years, onRows, onError) {
+      if (!user || user.uid !== uid) {
+        later(() => onError(refuse('permission-denied')));
+        return () => {};
+      }
+      const l = { uid, app, years, onRows };
+      appListeners.add(l);
+      if (online) refresh();
+      return () => appListeners.delete(l);
     },
 
     write(uid, writes) {

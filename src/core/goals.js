@@ -1,9 +1,11 @@
-// Goals at week, month and year level. A goal is either measured by hand
-// (a percentage) or linked to a habit or ritual, in which case its progress is
-// calculated from real ticks and never typed in.
+// Goals at week, month and year level. A goal is measured by hand (a
+// percentage), counted by hand towards a target ("Run 3 times": +1 per run),
+// or linked to a habit or ritual, in which case its progress is calculated
+// from real ticks and never typed in. A habit-linked goal may set its own
+// target ("Gym 3 times" while the habit asks 4).
 
-import { addDays, daysInMonth, diffDays, monthKey, monthName, weekKey, weekStart, yearKey } from './dates.js';
-import { isDone, weekCount, weekMet, weeklyTarget } from './habits.js';
+import { addDays, monthKey, monthName, weekKey, weekStart, yearKey } from './dates.js';
+import { freqOn, isDone, weekCount, weekMet, weeklyTarget } from './habits.js';
 import { activeRun, dueDay, owed, periodKey, progress } from './rituals.js';
 
 export const periodOf = (level, day) => ({ week: weekKey, month: monthKey, year: yearKey }[level](day));
@@ -36,37 +38,53 @@ const pct = (a, b) => {
   return { value: v, label: `${Math.round(v * 100)}%` };
 };
 
+// Ticks in the goal's period up to `today`, against the goal's own target.
+function habitCount(level, habit, target, checks, today) {
+  const from = { week: weekStart(today), month: `${monthKey(today)}-01`, year: `${yearKey(today)}-01-01` }[level];
+  let done = 0;
+  for (let d = from; d <= today; d = addDays(d, 1)) if (isDone(checks, d, habit.id)) done += 1;
+  return frac(done, target);
+}
+
 function habitMeasure(level, habit, checks, today) {
-  if (level === 'week') return frac(weekCount(checks, habit, today), weeklyTarget(habit));
+  if (level === 'week') return frac(weekCount(checks, habit, today), weeklyTarget(habit, today));
 
   if (level === 'month') {
+    // Each day asks its share of that week's quota, so a quota changed
+    // mid-month counts each part at its own rate.
     const m = monthKey(today);
-    const done = Object.keys(checks).filter((d) => monthKey(d) === m && isDone(checks, d, habit.id)).length;
-    const days = daysInMonth(m);
-    const target = habit.freq.type === 'daily' ? days : Math.round((habit.freq.times * days) / 7);
-    return frac(done, target);
+    let done = 0;
+    let target = 0;
+    for (let d = `${m}-01`; monthKey(d) === m; d = addDays(d, 1)) {
+      if (isDone(checks, d, habit.id)) done += 1;
+      const f = freqOn(habit, d);
+      target += f.type === 'daily' ? 1 : f.times / 7;
+    }
+    return frac(done, Math.round(target));
   }
 
-  // year: share of days (daily) or of completed weeks (weekly) since the habit began
+  // Year: since the habit began, the share of days on a daily quota and of
+  // completed weeks on a weekly one. Completed weeks only, starting with the
+  // first full week: a week the habit joined halfway through would count as
+  // a miss it never had a chance at.
   const yearStart = `${yearKey(today)}-01-01`;
   const from = habit.createdDay && habit.createdDay > yearStart ? habit.createdDay : yearStart;
-  if (habit.freq.type === 'daily') {
-    let done = 0;
-    for (let d = from; d <= today; d = addDays(d, 1)) if (isDone(checks, d, habit.id)) done += 1;
-    return pct(done, diffDays(from, today) + 1);
-  }
-  // Completed weeks only, starting with the first full week: a week the habit
-  // joined halfway through would count as a miss it never had a chance at.
-  let weeks = 0;
+  const thisWeek = weekStart(today);
+  let units = 0;
   let met = 0;
-  let w = weekStart(from);
-  if (w < from) w = addDays(w, 7);
-  for (; w < weekStart(today); w = addDays(w, 7)) {
-    weeks += 1;
-    if (weekMet(checks, habit, w)) met += 1;
+  for (let w = weekStart(from); w <= thisWeek; w = addDays(w, 7)) {
+    if (freqOn(habit, w).type === 'daily') {
+      for (let d = w < from ? from : w; d <= today && d < addDays(w, 7); d = addDays(d, 1)) {
+        units += 1;
+        if (isDone(checks, d, habit.id)) met += 1;
+      }
+    } else if (w >= from && w < thisWeek) {
+      units += 1;
+      if (weekMet(checks, habit, w)) met += 1;
+    }
   }
-  if (!weeks) return { value: 0, label: '—', note: 'counts from your first full week' };
-  return pct(met, weeks);
+  if (!units) return { value: 0, label: '—', note: 'counts from your first full week' };
+  return pct(met, units);
 }
 
 function ritualMeasure(level, ritual, runs, today) {
@@ -100,7 +118,15 @@ export function measure(goal, state, today) {
   const m = goal.measure || { type: 'manual', pct: 0 };
   if (m.type === 'habit') {
     const habit = state.habits.find((h) => h.id === m.habitId);
+    if (habit && m.target > 0) return habitCount(goal.level, habit, m.target, state.checks, today);
     if (habit) return habitMeasure(goal.level, habit, state.checks, today);
+  }
+  if (m.type === 'count') {
+    // A count belongs to its own period: carried over into a new one, it
+    // starts again from 0 (actions.js copies it over on the first +1).
+    const n = goal.period === periodOf(goal.level, today) ? Math.max(0, Number(m.n) || 0) : 0;
+    const target = Math.max(1, Number(m.target) || 1);
+    return { ...frac(n, target), count: true, n, target };
   }
   if (m.type === 'ritual') {
     const ritual = state.rituals.find((r) => r.id === m.ritualId);

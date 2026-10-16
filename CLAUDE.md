@@ -29,7 +29,10 @@ Build order agreed with Fred (five steps; each stops for his review).
    on seed.example.js), so it can't stand in for that test.
 4. ⏳ Edit forms. 29 Sep, from Fred's first week of use: **goals** (any level, from
    each goal card and from the weekly review) and the **plan of days** are editable
-   (`ui/sheets.js`), and the weekly review's steps open them. Still to do: habits,
+   (`ui/sheets.js`), and the weekly review's steps open them. 16 Oct: goals can be
+   **counted** (+1 on the card), a habit goal can set its **own target**, the goal editor
+   can **create a new habit**, hand-kept goals keep a **log**, and "Edit habits" (both
+   views) changes **quotas** and adds habits. Still to do: renaming/archiving habits,
    rituals, steps, launchers (those change by an upgrade step for now, see below).
 
 **Luna's jar (29 Sep, Fred):** every *week* goal below 100% costs €5, paid to his wife Luna
@@ -114,6 +117,11 @@ it takes ~ms). All user text goes through `esc()`. State changes only via
 `{ version, launchers, habits, rituals, goals, checks, runs }`
 - `version` — shape of the record (`core/migrate.js` VERSION, now 2).
 - `checks['2026-10-01'].mn = true` — a habit tick on a logical day.
+- Habit `pastFreq: [{ until: Monday, freq }]` — quotas before a change (`freqOn`); a new
+  quota counts from the Monday of the week it was set, earlier weeks keep theirs. Changing
+  it drops the custom `sub` and `featured.note` (they stated the old quota). In the week a
+  habit began, `weeklyTarget(h, day)` is capped at the days it had. A weekly featured habit
+  shows a streak in weeks (`habitStreak`).
 - Habit `plannedWeekdays: [1, 3, 6]` (1 = Mon) — set in the weekly review's "Plan the
   days"; stays until changed. Its `sub` line is then computed (`habitSub`).
 - Ritual `schedule`: `{ type: 'weekly', weekday }` · `{ type: 'monthly', rule:
@@ -123,7 +131,12 @@ it takes ~ms). All user text goes through `esc()`. State changes only via
 - `runs.money['2026-10'] = { startedAt, steps:{id:true}, done, doneDay, doneAt, minutes }`
   keyed by period (`2026-W40` weekly, `2026-10` monthly).
 - Goals: `{ level: week|month|year, period, title, measure }`, measure is
-  `manual {pct}` or linked `habit {habitId}` / `ritual {ritualId}` (computed, never typed).
+  `manual {pct}`, `count {target, n}` (+1 per tap), or linked `habit {habitId, target?}` /
+  `ritual {ritualId}` (computed, never typed; `target` = the goal's own number of ticks in
+  its period instead of the habit's quota). Hand-kept goals carry `log: [{day, v}]`.
+  A count belongs to its period: carried over, it shows 0, and the first tap copies the
+  carried set into the current period (ids `<id>~<period>`, `ownGoal` in actions.js) —
+  so changing a carried goal never rewrites last week's.
   `saveGoals` replaces one period's list; an emptied period keeps one `archived`
   marker so it stays empty instead of carrying the previous period's goals over.
   Goals accumulate in `main` (~200 a year, ~30 KB): fine for many years; if `main`
@@ -261,6 +274,19 @@ the folder to the current window instead of opening a new one
   checks go on `write` only. This bit twice: 28 Sep (fixed in the console, but
   the file stayed wrong because Word had it locked) and 29 Sep (the Mongolian
   rules were added to the stale file and Fred pasted it over the working rules).
+
+## Mongolian lessons tick the habit (16 Oct)
+
+- The Mongolian app's history rows (`users/{uid}/mongolian/YYYY`, `history[calendar day]`)
+  carry `firstAt` / `lastAt` (ms) since 16 Oct. `core/links.js sessionDays` turns each into
+  Life Hub's day (04:00 rule); rows without times count for their calendar date.
+- Habit `link: { app: 'mongolian', since }` (migrate step 4, since 2026-10-16). `data/links.js`
+  listens (`backend.listenApp`, single year documents — never the word buckets) while signed
+  in, for the years around today (`yearsAround`: New Year), and commits ordinary ticks for
+  studied days not yet ticked. Both devices may add the same tick: harmless.
+- A studied day can't be unticked (`toggleHabit(…, studied)`); desktop cells say "Done in the
+  Mongolian app". No sync (local/dev/demo) = no link, ticks by hand as before.
+- Tests: `tests/links.test.js` (pretend server: `server.putApp(uid, 'mongolian', '2026', …)`).
 
 ## Offline copy + publishing (step 5)
 

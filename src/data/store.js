@@ -13,6 +13,7 @@ import * as A from '../core/actions.js';
 import { logicalDay } from '../core/dates.js';
 import { migrate } from '../core/migrate.js';
 import { createEngine } from './engine.js';
+import { watchLinks } from './links.js';
 import { firebaseBackend } from './firebase.js';
 import { firebaseConfig } from './firebase-config.js';
 
@@ -51,6 +52,7 @@ async function backend() {
 }
 
 let engine = null;
+let links = { studied: () => false };
 
 export async function load() {
   // Changes to the live record that name personal addresses (seed.local.js,
@@ -60,24 +62,32 @@ export async function load() {
   const onLaptop = document.querySelector('meta[name=app-version]').content === 'dev';
   const mine = onLaptop ? await local() : null;
   const upgrade = (s) => (mine && mine.upgradeLocal ? mine.upgradeLocal(migrate(s)) : migrate(s));
-  engine = createEngine({ storage: localStorage, key: KEY, backend: await backend(), seed, upgrade });
+  const be = await backend();
+  engine = createEngine({ storage: localStorage, key: KEY, backend: be, seed, upgrade });
+  links = watchLinks({ engine, backend: be, today });
   addEventListener('storage', (e) => engine.receive(e));
   return engine.load({ reset: params.has('reset') });
 }
 
 export const get = () => engine.get();
 export const subscribe = (fn) => engine.subscribe(fn);
+// The day has a real session in the habit's linked app (it can't be unticked).
+export const studied = (habitId, day) => links.studied(habitId, day);
 
 const commit = (fn) => engine.commit(fn(engine.get()));
 
 export const act = {
-  toggleHabit: (id, day) => commit((s) => A.toggleHabit(s, id, day)),
+  toggleHabit: (id, day) => commit((s) => A.toggleHabit(s, id, day, links.studied(id, day))),
   toggleStep: (ritualId, stepId) => commit((s) => A.toggleStep(s, ritualId, stepId, today(), Date.now())),
   setStep: (ritualId, stepId, on) => commit((s) => A.setStep(s, ritualId, stepId, on, today(), Date.now())),
   startRitual: (ritualId) => commit((s) => A.startRitual(s, ritualId, today(), Date.now())),
   toggleRitualDone: (ritualId) => commit((s) => A.toggleRitualDone(s, ritualId, today(), Date.now())),
-  setGoalPct: (goalId, pct) => commit((s) => A.setGoalPct(s, goalId, pct)),
-  saveGoals: (level, period, goals) => commit((s) => A.saveGoals(s, level, period, goals)),
+  setGoalPct: (goalId, pct) => commit((s) => A.setGoalPct(s, goalId, pct, today())),
+  setGoalCount: (goalId, n) => commit((s) => A.setGoalCount(s, goalId, n, today())),
+  bumpGoal: (goalId, delta) => commit((s) => A.bumpGoal(s, goalId, delta, today())),
+  saveGoals: (level, period, goals) => commit((s) => A.saveGoals(s, level, period, goals, today())),
+  addHabit: (habit, freq) => commit((s) => A.addHabit(s, habit, freq, today())),
+  setHabitFreqs: (freqs) => commit((s) => A.setHabitFreqs(s, freqs, today())),
   markPaid: (entries) => commit((s) => A.markPaid(s, entries, today())),
   unmarkPaid: (key) => commit((s) => A.unmarkPaid(s, key)),
   setPlannedDays: (plan) => commit((s) => A.setPlannedDays(s, plan)),

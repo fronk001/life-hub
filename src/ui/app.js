@@ -7,7 +7,7 @@ import { act, get, isDemo, load, subscribe, sync, today } from '../data/store.js
 import { accountLine, closeSignIn, gate, openSignIn, signInForced, signInOpen, syncButton } from './account.js';
 import { renderDesktop } from './desktop.js';
 import { renderPhone } from './phone.js';
-import { editGoals, planDays, sheetOpen } from './sheets.js';
+import { editGoals, editHabits, planDays, sheetOpen } from './sheets.js';
 
 const root = document.getElementById('app');
 const narrow = matchMedia('(max-width: 759px)');
@@ -82,6 +82,13 @@ root.addEventListener('click', (e) => {
       if (v !== null && v.trim() !== '' && Number.isFinite(Number(v))) act.setGoalPct(id, Number(v));
       break;
     }
+    case 'goal-plus': act.bumpGoal(id, 1); break;
+    case 'goal-count': {
+      const v = prompt(`How many so far for “${el.dataset.title}”?`, el.dataset.n);
+      if (v !== null && v.trim() !== '' && Number.isFinite(Number(v))) act.setGoalCount(id, Number(v));
+      break;
+    }
+    case 'habits': editHabits(); break;
     case 'goals': editGoals({ levels: [el.dataset.level], day: today() }); break;
     case 'paid': act.markPaid(owing(get(), today())); break;
     case 'unpaid': act.unmarkPaid(id); break;

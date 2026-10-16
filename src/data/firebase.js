@@ -82,6 +82,18 @@ export function firebaseBackend(config) {
       }, onError);
     },
 
+    // Another app's history in this account (the Mongolian app's year
+    // documents, users/{uid}/mongolian/2026), as one map of rows by day.
+    listenApp(uid, app, years, onRows, onError) {
+      const { F, db } = fb;
+      const parts = {};
+      const stops = years.map((y) => F.onSnapshot(F.doc(db, 'users', uid, app, y), (snap) => {
+        parts[y] = (snap.exists() && snap.data().history) || {};
+        onRows(Object.assign({}, ...Object.values(parts)));
+      }, onError));
+      return () => stops.forEach((stop) => stop());
+    },
+
     write(uid, writes) {
       const batch = fb.F.writeBatch(fb.db);
       for (const w of writes) batch.set(data(uid, w.id), swap(w.data), { merge: w.merge });

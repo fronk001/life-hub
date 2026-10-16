@@ -18,7 +18,9 @@ export function goalCard(s, level, day) {
     const m = measure(g, s, day);
     const val = m.manual
       ? `<button class="val" data-act="goal" data-id="${esc(g.id)}" data-title="${esc(g.title)}" data-pct="${Math.round(m.value * 100)}" title="Tap to update">${m.label}</button>`
-      : `<span class="val">${m.label}</span>`;
+      : m.count
+        ? `<span class="cnt"><button class="val" data-act="goal-count" data-id="${esc(g.id)}" data-title="${esc(g.title)}" data-n="${m.n}" title="Tap to correct">${m.label}</button><button class="plus" data-act="goal-plus" data-id="${esc(g.id)}" aria-label="Add one to ${esc(g.title)}">+1</button></span>`
+        : `<span class="val">${m.label}</span>`;
     return `<div class="goal"><div class="top"><span>${esc(g.title)}</span>${val}</div><div class="bar"><i style="width:${Math.max(m.value * 100, 1)}%"></i></div>${
       m.note ? `<div class="gnote">${esc(m.note)}</div>` : ''}</div>`;
   }).join('');

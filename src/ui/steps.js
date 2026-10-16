@@ -17,7 +17,7 @@ export function weekScore(s, closes) {
   const end = addDays(closes, 6);
   return s.habits.filter((h) => !h.archived && !(h.createdDay && h.createdDay > end)).map((h) => {
     const count = weekCount(s.checks, h, closes);
-    const target = weeklyTarget(h);
+    const target = weeklyTarget(h, closes);
     return { h, count, target, met: count >= target };
   });
 }

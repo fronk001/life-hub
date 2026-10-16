@@ -5,21 +5,22 @@ import {
   addMonths, isoWeek, longLabel, monthKey, monthName, shortLabel, weekDays,
   weekRangeLabel, weekdayName,
 } from '../core/dates.js';
-import { habitSub, isDone, streak, todaySummary, weekCount, weekHistory, weeklyTarget } from '../core/habits.js';
+import { habitStreak, habitSub, isDone, todaySummary, weekCount, weekHistory, weeklyTarget } from '../core/habits.js';
 import { activeRun, history, lastRunDay, nextDue, progress, status } from '../core/rituals.js';
 import { monthWins } from '../core/wins.js';
 import { goalCard } from './goals.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible, plural } from './html.js';
 import { lunaCard } from './luna.js';
+import { studied } from '../data/store.js';
 import { stepButton } from './steps.js';
 
-const days = (n) => plural(n, 'day');
+const days = (n, unit = 'day') => plural(n, unit);
 
 function header(s, habits, featured, day) {
   const sum = todaySummary(s.checks, habits, day);
   const wins = monthWins(s, monthKey(day));
   const stat = (k, v, cls = '') => `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
-  const st = featured ? streak(s.checks, featured.id, day).current : 0;
+  const st = featured ? habitStreak(s.checks, featured, day) : null;
   return `
   <header class="head">
     <div class="titles">
@@ -29,7 +30,7 @@ function header(s, habits, featured, day) {
     </div>
     <div class="stats">
       ${stat('Done today', `${sum.done} <small>/ ${sum.total}</small>`)}
-      ${featured ? stat(`${esc(featured.short || featured.name)} streak`, `${st} <small>${days(st)}</small>`, 'green') : ''}
+      ${featured ? stat(`${esc(featured.short || featured.name)} streak`, `${st.current} <small>${days(st.current, st.unit)}</small>`, 'green') : ''}
       ${stat(`Wins in ${monthName(monthKey(day))}`, wins.total)}
     </div>
   </header>`;
@@ -40,10 +41,11 @@ function habitRow(s, h, day) {
     if (d > day) return '<div class="cell future"></div>';
     if (h.createdDay && d < h.createdDay) return '<div class="cell before"></div>';
     const done = isDone(s.checks, d, h.id);
-    return `<button class="cell${d === day ? ' today' : ''}${done ? ' done' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${d}" aria-pressed="${done}" aria-label="${esc(h.name)}, ${longLabel(d)}">${done ? CHECK : ''}</button>`;
+    const app = done && studied(h.id, d) ? ', done in the Mongolian app' : '';
+    return `<button class="cell${d === day ? ' today' : ''}${done ? ' done' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${d}" aria-pressed="${done}" aria-label="${esc(h.name)}, ${longLabel(d)}${app}"${app ? ` title="Done in the Mongolian app"` : ''}>${done ? CHECK : ''}</button>`;
   }).join('');
   const count = weekCount(s.checks, h, day);
-  const target = weeklyTarget(h);
+  const target = weeklyTarget(h, day);
   const hist = weekHistory(s.checks, h, day).map((w) => (w.beforeStart
     ? '<span class="chip none" title="Before Life Hub">—</span>'
     : `<span class="chip ${w.met ? 'full' : 'part'}">${w.count}/${w.target}</span>`)).join('');
@@ -63,6 +65,7 @@ function habitsCard(s, habits, day) {
     <div class="section-head">
       <h2>Habits this week</h2>
       <div class="muted">${weekRangeLabel(day)} · tap today’s square to check in</div>
+      <button class="btn text" data-act="habits">Edit habits</button>
     </div>
     <div class="hgrid header"><div>Habit</div>${heads}<div class="r">Week</div><div class="hist-h">Last 4 weeks</div></div>
     ${habits.map((h) => habitRow(s, h, day)).join('')}
@@ -71,7 +74,7 @@ function habitsCard(s, habits, day) {
 
 function featureCard(s, h, day, phone) {
   const f = h.featured;
-  const { current, longest } = streak(s.checks, h.id, day);
+  const { current, longest, unit } = habitStreak(s.checks, h, day);
   const done = isDone(s.checks, day, h.id);
   const l = launcher(s, h.launcherId);
   return `
@@ -81,8 +84,8 @@ function featureCard(s, h, day, phone) {
     <p>${esc(f.blurb || '')}</p>
     <div class="streakbox">
       <div class="k">Streak</div>
-      <div class="v">${current} ${days(current)}</div>
-      <div class="n">Longest: ${longest} ${days(longest)}${f.note ? ` · ${esc(f.note)}` : ''}</div>
+      <div class="v">${current} ${days(current, unit)}</div>
+      <div class="n">Longest: ${longest} ${days(longest, unit)}${f.note ? ` · ${esc(f.note)}` : ''}</div>
     </div>
     <div class="actions">
       ${launcherVisible(l, phone) ? launchLink(l, 'btn light', l.label, { phone }) : ''}

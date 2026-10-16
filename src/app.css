@@ -224,7 +224,12 @@ ol.plan { margin: 0; padding-left: 20px; display: flex; flex-direction: column; 
 .goal { display: flex; flex-direction: column; gap: 6px; }
 .goal .top { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
 .goal .val { font-weight: 600; white-space: nowrap; }
-button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px dotted currentColor; }
+button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px dotted currentColor; color: inherit; font: inherit; font-weight: 600; }
+.goal .cnt { display: flex; align-items: center; gap: 10px; }
+.goal .plus {
+  min-width: 44px; min-height: 32px; padding: 0 10px; border: 1.5px solid currentColor; border-radius: 999px;
+  background: none; color: inherit; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
 .goal .bar { height: 6px; }
 .goal-card.month .bar > i { background: var(--amber); }
 .gnote, .carried { font-size: 13px; color: var(--muted); }
@@ -287,6 +292,7 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .ph-feature .btn { flex: 1 1 0; }
 
 .ph-list { display: flex; flex-direction: column; gap: 10px; }
+.ph-edit { align-self: flex-end; margin-top: -6px; }
 .ph-row {
   width: 100%; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 16px;
   border: 1px solid var(--line); border-radius: 16px; background: var(--card); text-align: left; cursor: pointer; color: var(--ink);
@@ -440,6 +446,17 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
   color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px;
 }
 .gadd { align-self: flex-start; }
+.gtarget { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.gtarget input { width: 80px; }
+.gnew { display: flex; flex-wrap: wrap; gap: 8px; }
+.gnew input { flex: 1 1 180px; min-width: 0; }
+.glog { font-size: 14px; color: var(--muted); }
+.glog summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.glog ol { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.glog li { display: flex; justify-content: space-between; max-width: 220px; }
+.hlist { display: flex; flex-direction: column; gap: 10px; }
+.hrow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.hrow .pname, .hrow input { flex: 1 1 180px; min-width: 0; }
 
 .plist { display: flex; flex-direction: column; gap: 16px; }
 .prow { display: flex; flex-direction: column; gap: 8px; }

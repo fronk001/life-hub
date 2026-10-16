@@ -8,7 +8,7 @@
 
 import { defaultPenalty } from './penalty.js';
 
-export const VERSION = 3;
+export const VERSION = 4;
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -42,6 +42,12 @@ const STEPS = {
   // this week on (Monday 28 September).
   3(s) {
     if (!s.penalty) s.penalty = defaultPenalty();
+  },
+  // 16 Oct 2026, Fred: a finished Mongolian lesson ticks the Mongolian habit
+  // by itself (core/links.js), from today on: earlier days stay as they are.
+  4(s) {
+    const mn = (s.habits || []).find((h) => h.launcherId === 'mongolian' || h.id === 'mn');
+    if (mn && !mn.link) mn.link = { app: 'mongolian', since: '2026-10-16' };
   },
 };
 

@@ -1,11 +1,11 @@
-// The editors: goals for a week, month or year, and the plan of days for the
-// weekly habits. Like the sign-in form (account.js) they live outside #app:
+// The editors: goals for a week, month or year, the habits and their quotas,
+// and the plan of days for the weekly habits. Like the sign-in form (account.js) they live outside #app:
 // the views are re-rendered whole on every change, including one arriving
 // from another device, and that would wipe whatever is being typed.
 
-import { dayName, isoWeek, monthKey, monthName, weekRangeLabel, yearKey } from '../core/dates.js';
+import { dayMonth, dayName, isoWeek, monthKey, monthName, weekRangeLabel, yearKey } from '../core/dates.js';
 import { goalsFor, periodName, periodOf } from '../core/goals.js';
-import { freqLabel, planned, weeklyTarget } from '../core/habits.js';
+import { freqLabel, freqText, planned, weeklyTarget } from '../core/habits.js';
 import { act, get } from '../data/store.js';
 import { esc, plural } from './html.js';
 
@@ -13,7 +13,7 @@ let box = null;
 let opener = null;
 let submit = null;
 
-const newId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const newId = (p = 'g') => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 function build() {
   box = document.createElement('div');
@@ -35,14 +35,15 @@ function build() {
     const k = f.dataset.f;
     if (k === 'cancel') closeSheet();
     else if (k === 'add') addGoal(f.closest('.gsec'));
-    else if (k === 'remove') f.closest('.grow').remove();
+    else if (k === 'remove') f.closest('.grow, .hrow').remove();
+    else if (k === 'add-habit') addHabitRow(f.closest('form'));
     else if (k === 'day') {
       f.setAttribute('aria-pressed', String(f.getAttribute('aria-pressed') !== 'true'));
       countDays(f.closest('.prow'));
     }
   });
   box.addEventListener('change', (e) => {
-    if (e.target.name === 'measure') e.target.closest('.grow').querySelector('.gpct').hidden = e.target.value !== 'manual';
+    if (e.target.name === 'measure') showFields(e.target.closest('.grow'));
   });
   box.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeSheet();
@@ -75,31 +76,76 @@ const actions = (label) => `
     <button type="button" class="btn text" data-f="cancel">Cancel</button>
   </div>`;
 
+// ---- habit quotas ------------------------------------------------------------
+
+const FREQS = [{ type: 'daily' }, ...[1, 2, 3, 4, 5, 6].map((times) => ({ type: 'weekly', times }))];
+const freqValue = (f) => (f.type === 'daily' ? 'daily' : `weekly:${f.times}`);
+const readFreq = (v) => (v === 'daily' ? { type: 'daily' } : { type: 'weekly', times: Number(v.split(':')[1]) });
+
+function freqSelect(freq, label) {
+  const on = freqValue(freq);
+  return `<select name="freq" aria-label="${esc(label)}">${FREQS.map((f) => `<option value="${freqValue(f)}"${freqValue(f) === on ? ' selected' : ''}>${f.type === 'daily' ? 'Every day' : freqText(f)}</option>`).join('')}</select>`;
+}
+
 // ---- goals ------------------------------------------------------------------
 
+function measureValue(m) {
+  if (m.type === 'habit') return `habit:${m.habitId}`;
+  if (m.type === 'ritual') return `ritual:${m.ritualId}`;
+  return m.type === 'count' ? 'count' : 'manual';
+}
+
 function measureOptions(s, m) {
-  const value = m.type === 'habit' ? `habit:${m.habitId}` : m.type === 'ritual' ? `ritual:${m.ritualId}` : 'manual';
+  const value = measureValue(m);
   const opt = (v, label) => `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(label)}</option>`;
   const habits = s.habits.filter((h) => !h.archived);
   const rituals = s.rituals.filter((r) => !r.archived);
-  const known = value === 'manual' || habits.some((h) => `habit:${h.id}` === value) || rituals.some((r) => `ritual:${r.id}` === value);
+  const known = ['manual', 'count'].includes(value) || habits.some((h) => `habit:${h.id}` === value) || rituals.some((r) => `ritual:${r.id}` === value);
   return opt('manual', 'By hand, in %')
-    + (habits.length ? `<optgroup label="Counts a habit’s ticks">${habits.map((h) => opt(`habit:${h.id}`, h.name)).join('')}</optgroup>` : '')
+    + opt('count', 'Count up to a target (+1 each time)')
+    + `<optgroup label="Counts a habit’s ticks">${habits.map((h) => opt(`habit:${h.id}`, h.name)).join('')}${opt('new-habit', 'A new habit…')}</optgroup>`
     + (rituals.length ? `<optgroup label="Counts a ritual">${rituals.map((r) => opt(`ritual:${r.id}`, r.name)).join('')}</optgroup>` : '')
     + (known ? '' : opt(value, 'A habit or ritual that’s gone'));
+}
+
+// Which inputs a row shows depends on how the goal is measured.
+function showFields(li) {
+  const v = li.querySelector('[name=measure]').value;
+  const counted = v === 'count';
+  li.querySelector('.gpct').hidden = v !== 'manual';
+  li.querySelector('.gtarget').hidden = !(counted || v.startsWith('habit:') || v === 'new-habit');
+  li.querySelector('.gtarget span').textContent = counted ? 'Target' : 'Own target';
+  li.querySelector('[name=target]').placeholder = counted ? '' : 'usual';
+  li.querySelector('.gnew').hidden = v !== 'new-habit';
+}
+
+function logList(g) {
+  const log = g.log || [];
+  if (!log.length) return '';
+  const unit = g.measure.type === 'manual' ? '%' : '';
+  const items = log.slice(-12).reverse().map((e) => `<li><span>${esc(dayMonth(e.day))}</span><span>${Number(e.v)}${unit}</span></li>`).join('');
+  return `<details class="glog"><summary>Progress so far</summary><ol>${items}</ol></details>`;
 }
 
 function goalRow(s, g) {
   const m = g.measure || { type: 'manual', pct: 0 };
   const manual = m.type === 'manual';
+  const counted = m.type === 'count';
+  const targeted = counted || m.type === 'habit';
   return `
   <li class="grow" data-id="${esc(g.id)}">
     <input name="title" value="${esc(g.title)}" placeholder="A goal, in a few words" aria-label="Goal" autocomplete="off" maxlength="80">
     <div class="gmeta">
       <label class="gmeasure"><span>Progress</span><select name="measure">${measureOptions(s, m)}</select></label>
       <label class="gpct"${manual ? '' : ' hidden'}><input name="pct" type="number" min="0" max="100" step="5" inputmode="numeric" value="${manual ? Number(m.pct) || 0 : 0}" aria-label="Progress in percent"><span>%</span></label>
+      <label class="gtarget"${targeted ? '' : ' hidden'}><span>${counted ? 'Target' : 'Own target'}</span><input name="target" type="number" min="1" step="1" inputmode="numeric" value="${targeted ? Number(m.target) || '' : ''}" placeholder="${counted ? '' : 'usual'}"></label>
       <button type="button" class="gdel" data-f="remove">Remove</button>
     </div>
+    <div class="gnew" hidden>
+      <input name="hname" placeholder="The habit’s name" aria-label="New habit’s name" autocomplete="off" maxlength="40">
+      ${freqSelect({ type: 'weekly', times: 3 }, 'How often')}
+    </div>
+    ${logList(g)}
   </li>`;
 }
 
@@ -127,13 +173,25 @@ function section(s, level, day, many) {
   </section>`;
 }
 
-function readSection(sec) {
+// A row set to "A new habit…" adds that habit (to `born`, created before the
+// goals are saved) and links the goal to it.
+function readSection(sec, born) {
   return [...sec.querySelectorAll('.grow')].map((li) => {
+    const title = li.querySelector('[name=title]').value;
     const [type, id] = li.querySelector('[name=measure]').value.split(':');
-    const measure = type === 'habit' ? { type, habitId: id }
-      : type === 'ritual' ? { type, ritualId: id }
-        : { type: 'manual', pct: Number(li.querySelector('[name=pct]').value) };
-    return { id: li.dataset.id, title: li.querySelector('[name=title]').value, measure };
+    const target = Number(li.querySelector('[name=target]').value) || 0;
+    let measure;
+    if (type === 'new-habit') {
+      const name = li.querySelector('[name=hname]').value.trim() || title.trim();
+      if (!title.trim()) return { id: li.dataset.id, title: '' };
+      const habitId = newId('h');
+      born.push({ habit: { id: habitId, name }, freq: readFreq(li.querySelector('.gnew [name=freq]').value) });
+      measure = { type: 'habit', habitId, target };
+    } else if (type === 'habit') measure = { type, habitId: id, target };
+    else if (type === 'ritual') measure = { type, ritualId: id };
+    else if (type === 'count') measure = { type, target: target || 1 };
+    else measure = { type: 'manual', pct: Number(li.querySelector('[name=pct]').value) };
+    return { id: li.dataset.id, title, measure };
   });
 }
 
@@ -150,12 +208,61 @@ export function editGoals({ levels, day, onSave = null }) {
   <form class="sheet-card" novalidate>
     <div class="eyebrow">Goals</div>
     <h1 id="sheet-title" tabindex="-1">${esc(goalsTitle(levels, day))}</h1>
-    <p class="lead">${levels.includes('week') ? `${esc(weekRangeLabel(day))}. ` : ''}A goal linked to a habit or ritual counts itself; one kept by hand shows the percentage you give it.</p>
+    <p class="lead">${levels.includes('week') ? `${esc(weekRangeLabel(day))}. ` : ''}A goal linked to a habit or ritual counts itself. One kept by hand shows the percentage you give it; a counted one goes up by one each time you tap +1. Something new to keep up? Pick “A new habit…”.</p>
     ${levels.map((l) => section(s, l, day, levels.length > 1)).join('')}
     ${actions('Save goals')}
   </form>`, (form) => {
-    for (const sec of form.querySelectorAll('.gsec')) act.saveGoals(sec.dataset.level, sec.dataset.period, readSection(sec));
+    const born = [];
+    const sections = [...form.querySelectorAll('.gsec')].map((sec) => [sec.dataset.level, sec.dataset.period, readSection(sec, born)]);
+    for (const h of born) act.addHabit(h.habit, h.freq);
+    for (const [level, period, goals] of sections) act.saveGoals(level, period, goals);
     if (onSave) onSave();
+  });
+}
+
+// ---- habits -----------------------------------------------------------------
+
+function habitRow(h) {
+  return `
+  <div class="hrow" data-id="${esc(h.id)}">
+    <span class="pname">${esc(h.name)}</span>
+    ${freqSelect(h.freq, `How often: ${h.name}`)}
+  </div>`;
+}
+
+function addHabitRow(form) {
+  const t = document.createElement('template');
+  t.innerHTML = `
+  <div class="hrow new">
+    <input name="hname" placeholder="A new habit’s name" aria-label="New habit’s name" autocomplete="off" maxlength="40">
+    ${freqSelect({ type: 'weekly', times: 3 }, 'How often')}
+    <button type="button" class="gdel" data-f="remove">Remove</button>
+  </div>`.trim();
+  const row = t.content.firstChild;
+  form.querySelector('.hlist').append(row);
+  row.querySelector('input').focus();
+}
+
+// How often each habit is meant to happen, and new habits. A changed quota
+// counts from this week's Monday; the weeks before keep the one they had.
+export function editHabits() {
+  const habits = get().habits.filter((h) => !h.archived);
+  show(`
+  <form class="sheet-card" novalidate>
+    <div class="eyebrow">Habits</div>
+    <h1 id="sheet-title" tabindex="-1">How often</h1>
+    <p class="lead">A new quota counts from this Monday; earlier weeks keep the one they had. A new habit starts today.</p>
+    <div class="hlist">${habits.map(habitRow).join('')}</div>
+    <button type="button" class="btn text gadd" data-f="add-habit">+ Add a habit</button>
+    ${actions('Save habits')}
+  </form>`, (form) => {
+    const freqs = {};
+    for (const row of form.querySelectorAll('.hrow:not(.new)')) freqs[row.dataset.id] = readFreq(row.querySelector('[name=freq]').value);
+    act.setHabitFreqs(freqs);
+    for (const row of form.querySelectorAll('.hrow.new')) {
+      const name = row.querySelector('[name=hname]').value.trim();
+      if (name) act.addHabit({ id: newId('h'), name }, readFreq(row.querySelector('[name=freq]').value));
+    }
   });
 }
 

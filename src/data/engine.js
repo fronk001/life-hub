@@ -22,6 +22,7 @@
 //   signIn(email, pw) · signOut() · resetPassword(email)
 //   listen(uid, onDocs, onError)   onDocs({ docs, fromCache }); returns unsubscribe
 //   write(uid, writes)             [{ id, data, merge }], one atomic batch; resolves when stored
+//   listenApp(uid, app, years, onRows, onError)   another app's history rows by day (links.js); optional
 
 import { diff, fromDocs, patchesFor, toDocs } from '../core/sync.js';
 
@@ -42,6 +43,7 @@ export function createEngine({ storage, key, backend = null, seed, upgrade = (s)
   let fresh = null; // a starting set this device could begin a record with
   let sent = new Set();
   const subs = new Set();
+  const userWatchers = new Set();
 
   const notify = () => subs.forEach((fn) => fn());
 
@@ -154,6 +156,7 @@ export function createEngine({ storage, key, backend = null, seed, upgrade = (s)
     sent = new Set();
     uploading = false;
     readMeta();
+    userWatchers.forEach((fn) => fn(u ? u.uid : null));
     if (!u) {
       mode = 'signed-out';
       notify();
@@ -215,6 +218,12 @@ export function createEngine({ storage, key, backend = null, seed, upgrade = (s)
     subscribe(fn) {
       subs.add(fn);
       return () => subs.delete(fn);
+    },
+
+    // fn(uid | null) on every sign-in and sign-out (data/links.js).
+    watchUser(fn) {
+      userWatchers.add(fn);
+      if (user) fn(user.uid);
     },
 
     commit(next) {
