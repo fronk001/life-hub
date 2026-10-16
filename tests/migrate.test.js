@@ -27,6 +27,14 @@ test('step 2: groceries to Mondays, the money review to the 25th, review steps o
   eq(find(s, 'review').schedule, rituals[2].schedule, 'the review stays on Sunday');
 });
 
+test('step 5: on the phone, the Mongolian launcher opens in Safari itself', () => {
+  const url = 'https://fronk001.github.io/mongolian/';
+  const s = migrate(state({ version: 4, launchers: [{ id: 'mongolian', url }, { id: 'portfolio', url: 'https://x.test/' }] }));
+  eq(s.launchers.map((l) => l.phoneUrl), [`x-safari-${url}`, undefined], 'only Mongolian');
+  const own = migrate(state({ version: 4, launchers: [{ id: 'mongolian', url, phoneUrl: 'https://other.test/' }] }));
+  eq(own.launchers[0].phoneUrl, 'https://other.test/', 'a phone link already set stays');
+});
+
 test('the upgrade leaves the record it was given alone, and a second run changes nothing', () => {
   const before = v1();
   const once = migrate(before);

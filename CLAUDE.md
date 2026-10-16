@@ -115,7 +115,7 @@ it takes ~ms). All user text goes through `esc()`. State changes only via
 ## Data model (localStorage key `lifehub:v1`)
 
 `{ version, launchers, habits, rituals, goals, checks, runs }`
-- `version` — shape of the record (`core/migrate.js` VERSION, now 2).
+- `version` — shape of the record (`core/migrate.js` VERSION, now 5).
 - `checks['2026-10-01'].mn = true` — a habit tick on a logical day.
 - Habit `pastFreq: [{ until: Monday, freq }]` — quotas before a change (`freqOn`); a new
   quota counts from the Monday of the week it was set, earlier weeks keep theirs. Changing
@@ -199,7 +199,7 @@ per-document limits (1 MiB, 40k index entries) forever.
 
 | Launcher | Link | Where |
 |---|---|---|
-| Mongolian app | `https://fronk001.github.io/mongolian/` | both |
+| Mongolian app | `https://fronk001.github.io/mongolian/`; phone `x-safari-https://…` (opens real Safari, iOS 17+; migrate step 5, 16 Oct) | both |
 | Groceries | `claude://code/new?folder=…groceries-agent&q=/groceries-run` | laptop |
 | Numbers | `https://www.icloud.com/numbers/`; phone `numbers://` (**untested**) | both |
 | Portfolio tracker | hosted Streamlit copy `https://<app>.streamlit.app/?app=portfolio&window=last12` (address in seed.local.js; private, asks to sign in; keeps the query through sign-in) | both |

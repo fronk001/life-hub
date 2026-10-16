@@ -8,7 +8,7 @@
 
 import { defaultPenalty } from './penalty.js';
 
-export const VERSION = 4;
+export const VERSION = 5;
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -48,6 +48,13 @@ const STEPS = {
   4(s) {
     const mn = (s.habits || []).find((h) => h.launcherId === 'mongolian' || h.id === 'mn');
     if (mn && !mn.link) mn.link = { app: 'mongolian', since: '2026-10-16' };
+  },
+  // 16 Oct 2026, Fred: on the phone, "Open app" opens Mongolian in Safari
+  // itself, not in the browser sheet an installed web app opens links in.
+  // x-safari-https: is iOS's own scheme for that (iOS 17 and later).
+  5(s) {
+    const mn = (s.launchers || []).find((l) => l.id === 'mongolian');
+    if (mn && !mn.phoneUrl && /^https:\/\//i.test(mn.url || '')) mn.phoneUrl = `x-safari-${mn.url}`;
   },
 };
 

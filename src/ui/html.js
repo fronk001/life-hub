@@ -18,7 +18,8 @@ export const launcher = (s, id) => (s.launchers || []).find((l) => l.id === id) 
 export const launcherVisible = (l, phone) => !!l && !(phone && l.where === 'laptop');
 
 // Only schemes we know; anything else (javascript:, data:) renders inert.
-const SAFE = /^(https?:|claude:|ms-excel:|numbers:)/i;
+// x-safari-https: opens a page in Safari itself from an iPhone home-screen app.
+const SAFE = /^(https?:|x-safari-https:|claude:|ms-excel:|numbers:)/i;
 
 export function launchLink(l, cls, label, { phone = false, ritualId = '' } = {}) {
   const url = phone && l.phoneUrl ? l.phoneUrl : l.url;
