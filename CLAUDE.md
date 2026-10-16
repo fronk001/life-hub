@@ -115,7 +115,7 @@ it takes ~ms). All user text goes through `esc()`. State changes only via
 ## Data model (localStorage key `lifehub:v1`)
 
 `{ version, launchers, habits, rituals, goals, checks, runs }`
-- `version` — shape of the record (`core/migrate.js` VERSION, now 5).
+- `version` — shape of the record (`core/migrate.js` VERSION, now 6).
 - `checks['2026-10-01'].mn = true` — a habit tick on a logical day.
 - Habit `pastFreq: [{ until: Monday, freq }]` — quotas before a change (`freqOn`); a new
   quota counts from the Monday of the week it was set, earlier weeks keep theirs. Changing
@@ -265,7 +265,8 @@ the folder to the current window instead of opening a new one
   to its own `users/{own uid}/data/`, writing only `main|YYYY`, and — for the
   Mongolian app, which syncs through this same project and account since 28 Sep
   (`../mongolian`, its CLAUDE.md "Sync") — `users/{own uid}/mongolian/`, writing
-  only `main|items-N|YYYY`. Both apps' rules live in this one file; a change to
+  only `main|items-N|YYYY`; and for the Gym app (16 Oct) `users/{own uid}/gym/`,
+  writing only `main|log-YYYY|YYYY`. Both apps' rules live in this one file; a change to
   either means Fred re-pastes the whole file, so **the file must always match
   what works in the console**.
 - **Reads must not check the document name.** Both apps listen to their whole
@@ -287,6 +288,14 @@ the folder to the current window instead of opening a new one
 - A studied day can't be unticked (`toggleHabit(…, studied)`); desktop cells say "Done in the
   Mongolian app". No sync (local/dev/demo) = no link, ticks by hand as before.
 - Tests: `tests/links.test.js` (pretend server: `server.putApp(uid, 'mongolian', '2026', …)`).
+
+## Gym workouts tick the Gym habit (16 Oct)
+
+- The Gym app (`../gym`, its CLAUDE.md; https://fronk001.github.io/gym/) replaces Fred's
+  Apple Notes gym log. It writes `users/{uid}/gym/YYYY` = `{ history: { day: { firstAt,
+  lastAt } | { added } } }` (`added` = logged afterwards: counts for its date).
+- Habit `gym` gets `link: { app: 'gym', since: '2026-10-16' }` (migrate step 6). `data/links.js`
+  listens to every app in `APPS` (mongolian, gym) the same way; desktop cells name the app.
 
 ## Offline copy + publishing (step 5)
 

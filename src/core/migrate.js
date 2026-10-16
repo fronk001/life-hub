@@ -8,7 +8,7 @@
 
 import { defaultPenalty } from './penalty.js';
 
-export const VERSION = 5;
+export const VERSION = 6;
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -55,6 +55,12 @@ const STEPS = {
   5(s) {
     const mn = (s.launchers || []).find((l) => l.id === 'mongolian');
     if (mn && !mn.phoneUrl && /^https:\/\//i.test(mn.url || '')) mn.phoneUrl = `x-safari-${mn.url}`;
+  },
+  // 16 Oct 2026, Fred: the new Gym app (../gym) ticks the Gym habit by
+  // itself, on any day a set is ticked there, from today on.
+  6(s) {
+    const gym = (s.habits || []).find((h) => h.id === 'gym');
+    if (gym && !gym.link) gym.link = { app: 'gym', since: '2026-10-16' };
   },
 };
 

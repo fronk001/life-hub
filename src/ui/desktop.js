@@ -11,6 +11,7 @@ import { monthWins } from '../core/wins.js';
 import { goalCard } from './goals.js';
 import { CHECK, esc, launchLink, launcher, launcherVisible, plural } from './html.js';
 import { lunaCard } from './luna.js';
+import { APPS } from '../data/links.js';
 import { studied } from '../data/store.js';
 import { stepButton } from './steps.js';
 
@@ -41,8 +42,9 @@ function habitRow(s, h, day) {
     if (d > day) return '<div class="cell future"></div>';
     if (h.createdDay && d < h.createdDay) return '<div class="cell before"></div>';
     const done = isDone(s.checks, d, h.id);
-    const app = done && studied(h.id, d) ? ', done in the Mongolian app' : '';
-    return `<button class="cell${d === day ? ' today' : ''}${done ? ' done' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${d}" aria-pressed="${done}" aria-label="${esc(h.name)}, ${longLabel(d)}${app}"${app ? ` title="Done in the Mongolian app"` : ''}>${done ? CHECK : ''}</button>`;
+    const where = done && studied(h.id, d) && h.link ? APPS[h.link.app] : '';
+    const app = where ? `, done in ${where}` : '';
+    return `<button class="cell${d === day ? ' today' : ''}${done ? ' done' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${d}" aria-pressed="${done}" aria-label="${esc(h.name)}, ${longLabel(d)}${app}"${where ? ` title="Done in ${where}"` : ''}>${done ? CHECK : ''}</button>`;
   }).join('');
   const count = weekCount(s.checks, h, day);
   const target = weeklyTarget(h, day);

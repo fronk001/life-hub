@@ -47,8 +47,14 @@ test('a studied day can’t be unticked by hand; other days can', () => {
 });
 
 test('the upgrade links the Mongolian habit from 16 October', () => {
-  const s = migrate({ version: 3, habits: [{ id: 'mn', launcherId: 'mongolian', freq: { type: 'daily' } }, { id: 'gym', freq: { type: 'daily' } }] });
+  const s = migrate({ version: 3, habits: [{ id: 'mn', launcherId: 'mongolian', freq: { type: 'daily' } }, { id: 'read', freq: { type: 'daily' } }] });
   eq(s.habits.map((h) => h.link), [{ app: 'mongolian', since: '2026-10-16' }, undefined]);
+  eq(migrate(s), s, 'done once');
+});
+
+test('the upgrade links the Gym habit to the Gym app from 16 October', () => {
+  const s = migrate({ version: 5, habits: [{ id: 'mn', freq: { type: 'daily' } }, { id: 'gym', freq: { type: 'weekly', times: 4 } }] });
+  eq(s.habits.map((h) => h.link), [undefined, { app: 'gym', since: '2026-10-16' }]);
   eq(migrate(s), s, 'done once');
 });
 
@@ -93,4 +99,27 @@ test('a lesson in the Mongolian app ticks Life Hub on both devices, offline too'
   await until(() => phone.done('2026-10-20'), 'the phone catches up');
   await sleep(50);
   eq(laptop.engine.status().waiting + phone.engine.status().waiting, 0, 'nothing left unsent');
+});
+
+test('a set ticked in the Gym app ticks the Gym habit; a day logged afterwards counts for its date', async () => {
+  const server = fakeServer();
+  const data = state({
+    habits: [
+      { id: 'mn', name: 'Mongolian', freq: { type: 'daily' }, createdDay: '2026-09-28', link: { app: 'mongolian', since: '2026-10-16' } },
+      { id: 'gym', name: 'Gym', freq: { type: 'weekly', times: 4 }, createdDay: '2026-09-28', link: { app: 'gym', since: '2026-10-16' } },
+    ],
+  });
+  const laptop = await device(server, 'laptop', data);
+  await laptop.engine.signIn(FRED.email, FRED.password);
+  await until(() => laptop.engine.status().mode === 'live', 'the laptop is live');
+  const gym = (day) => !!(laptop.engine.get().checks[day] && laptop.engine.get().checks[day].gym);
+  server.putApp(FRED.uid, 'gym', '2026', { history: {
+    '2026-10-12': { firstAt: at('2026-10-12T16:00:00Z'), lastAt: at('2026-10-12T17:00:00Z') }, // before the link: left alone
+    '2026-10-18': { firstAt: at('2026-10-18T16:00:00Z'), lastAt: at('2026-10-18T17:10:00Z') },
+    '2026-10-19': { added: at('2026-10-20T08:00:00Z') }, // logged the next morning
+  } });
+  await until(() => gym('2026-10-18') && gym('2026-10-19'), 'both gym days ticked');
+  ok(!gym('2026-10-12'), 'nothing before the link');
+  ok(laptop.links.studied('gym', '2026-10-18') && !laptop.links.studied('mn', '2026-10-18'), 'each habit its own app');
+  ok(!laptop.engine.get().checks['2026-10-18'].mn, 'a workout is no Mongolian lesson');
 });
