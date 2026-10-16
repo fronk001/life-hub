@@ -288,6 +288,8 @@ button.val { background: none; border: 0; padding: 0; cursor: pointer; border-bo
 .ph-feature .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .ph-feature .t { font-size: 18px; font-weight: 600; }
 .ph-feature .s { font-size: 14px; color: var(--on-green); }
+.ph-feature .main { display: flex; flex-direction: column; gap: 2px; }
+.ph-feature .c { font-size: 17px; font-weight: 600; }
 .ph-feature .row { display: flex; gap: 10px; }
 .ph-feature .btn { flex: 1 1 0; }
 

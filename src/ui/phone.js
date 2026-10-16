@@ -24,7 +24,10 @@ function featureCard(s, h, day, phone) {
   const l = launcher(s, h.launcherId);
   return `
   <section class="ph-feature">
-    <div class="top"><div class="t">${esc(f.phoneTitle || h.name)}</div><div class="s">${streakText(habitStreak(s.checks, h, day))}</div></div>
+    <div class="top">
+      <div class="main"><div class="t">${esc(f.phoneTitle || h.name)}</div><div class="s">${streakText(habitStreak(s.checks, h, day))}</div></div>
+      <div class="c">${weekCount(s.checks, h, day)}/${weeklyTarget(h, day)}</div>
+    </div>
     <div class="row">
       ${launcherVisible(l, phone) ? launchLink(l, 'btn light', l.short || l.label, { phone }) : ''}
       <button class="btn ghost-light${done ? ' on' : ''}" data-act="habit" data-id="${esc(h.id)}" data-day="${day}" aria-pressed="${done}">${done ? 'Done' : 'Mark done'}</button>
