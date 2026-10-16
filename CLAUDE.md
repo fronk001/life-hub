@@ -115,7 +115,7 @@ it takes ~ms). All user text goes through `esc()`. State changes only via
 ## Data model (localStorage key `lifehub:v1`)
 
 `{ version, launchers, habits, rituals, goals, checks, runs }`
-- `version` — shape of the record (`core/migrate.js` VERSION, now 6).
+- `version` — shape of the record (`core/migrate.js` VERSION, now 7).
 - `checks['2026-10-01'].mn = true` — a habit tick on a logical day.
 - Habit `pastFreq: [{ until: Monday, freq }]` — quotas before a change (`freqOn`); a new
   quota counts from the Monday of the week it was set, earlier weeks keep theirs. Changing

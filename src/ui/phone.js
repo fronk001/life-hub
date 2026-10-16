@@ -78,8 +78,8 @@ function ritualBanner(s, r, day, phone, open, calm = false) {
 
 export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
   const habits = s.habits.filter((h) => !h.archived);
-  const featured = habits.find((h) => h.featured);
-  const rest = habits.filter((h) => h !== featured);
+  const featured = habits.filter((h) => h.featured);
+  const rest = habits.filter((h) => !h.featured);
   const live = s.rituals.filter((r) => !r.archived);
   const urgent = live.filter((r) => needsAttention(r, s.runs, day));
   const calm = live.filter((r) => !urgent.includes(r));
@@ -91,7 +91,7 @@ export function renderPhone({ s, day, phone, ui, footer = '', sync = '' }) {
       <div class="eyebrow">${shortLabel(day)} · Check-in</div>
       <h1>${headline(todaySummary(s.checks, habits, day))}</h1>
     </div>
-    ${featured ? featureCard(s, featured, day, phone) : ''}
+    ${featured.map((h) => featureCard(s, h, day, phone)).join('')}
     <div class="ph-list">${rest.map((h) => habitRow(s, h, day)).join('')}</div>
     <button class="btn text ph-edit" data-act="habits">Edit habits</button>
     ${urgent.map((r) => ritualBanner(s, r, day, phone, ui.expanded.has(r.id))).join('')}

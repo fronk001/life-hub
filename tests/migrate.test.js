@@ -30,7 +30,7 @@ test('step 2: groceries to Mondays, the money review to the 25th, review steps o
 test('step 5: on the phone, the Mongolian launcher opens in Safari itself', () => {
   const url = 'https://fronk001.github.io/mongolian/';
   const s = migrate(state({ version: 4, launchers: [{ id: 'mongolian', url }, { id: 'portfolio', url: 'https://x.test/' }] }));
-  eq(s.launchers.map((l) => l.phoneUrl), [`x-safari-${url}`, undefined], 'only Mongolian');
+  eq(s.launchers.slice(0, 2).map((l) => l.phoneUrl), [`x-safari-${url}`, undefined], 'only Mongolian');
   const own = migrate(state({ version: 4, launchers: [{ id: 'mongolian', url, phoneUrl: 'https://other.test/' }] }));
   eq(own.launchers[0].phoneUrl, 'https://other.test/', 'a phone link already set stays');
 });
@@ -49,4 +49,16 @@ test('a ritual already moved some other way is left where it is', () => {
   eq(find(migrate(s), 'groceries').schedule, { type: 'weekly', weekday: 3 });
   const bare = migrate(state({ version: 1, rituals: [] }));
   eq([bare.version, bare.rituals], [VERSION, []], 'a record without these rituals just gets the version');
+});
+
+test('step 7: Gym gets its own card and an Open app button, like Mongolian', () => {
+  const s = migrate(state({ version: 6, launchers: [{ id: 'mongolian', url: 'https://fronk001.github.io/mongolian/' }],
+    habits: [{ id: 'gym', name: 'Gym', freq: { type: 'weekly', times: 4 } }] }));
+  const l = s.launchers.find((x) => x.id === 'gym');
+  eq([l.url, l.phoneUrl, l.where], ['https://fronk001.github.io/gym/', 'x-safari-https://fronk001.github.io/gym/', 'everywhere']);
+  eq(s.habits[0].launcherId, 'gym');
+  ok(s.habits[0].featured && s.habits[0].featured.title);
+  eq(migrate(s), s, 'done once');
+  const mine = migrate(state({ version: 6, habits: [{ id: 'gym', freq: { type: 'weekly', times: 4 }, featured: { title: 'Mine' } }] }));
+  eq(mine.habits[0].featured, { title: 'Mine' }, 'a card already set stays');
 });

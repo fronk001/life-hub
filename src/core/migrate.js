@@ -8,9 +8,20 @@
 
 import { defaultPenalty } from './penalty.js';
 
-export const VERSION = 6;
+export const VERSION = 7;
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
+
+export const GYM_LAUNCHER = {
+  id: 'gym', label: 'Open Gym app', short: 'Open app', where: 'everywhere',
+  url: 'https://fronk001.github.io/gym/', phoneUrl: 'x-safari-https://fronk001.github.io/gym/',
+};
+export const GYM_FEATURED = {
+  title: 'Gym, 4× a week',
+  phoneTitle: 'Gym · 4× a week',
+  blurb: 'Legs, chest and shoulders, back and biceps, in turn. Tick your sets in the Gym app: this ticks itself.',
+  doneLabel: 'Mark gym done',
+};
 
 // Which screen each weekly review step opens (the `does` a step can have).
 const REVIEW_DOES = { score: 'score', goals: 'week-goals', plan: 'plan', check: 'check-goals' };
@@ -61,6 +72,15 @@ const STEPS = {
   6(s) {
     const gym = (s.habits || []).find((h) => h.id === 'gym');
     if (gym && !gym.link) gym.link = { app: 'gym', since: '2026-10-16' };
+  },
+  // 16 Oct 2026, Fred: Gym gets what Mongolian has, its own green card with
+  // an "Open app" button (on the phone in Safari itself, like Mongolian's).
+  7(s) {
+    s.launchers = s.launchers || [];
+    if (!s.launchers.some((l) => l.id === 'gym')) s.launchers.push(GYM_LAUNCHER);
+    const gym = (s.habits || []).find((h) => h.id === 'gym');
+    if (gym && !gym.launcherId) gym.launcherId = 'gym';
+    if (gym && !gym.featured) gym.featured = { ...GYM_FEATURED };
   },
 };
 

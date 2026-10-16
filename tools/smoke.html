@@ -72,7 +72,7 @@ try {
   await until(() => $('.ph'), 'the phone layout');
   // Thursday: Mongolian, gym and reading count; dressage is planned for Saturday.
   check('phone headline counts today', text('.ph-head h1') === '1 of 3 done');
-  $('.ph-row[data-id=gym]').click();
+  $('.ph-feature [data-act=habit][data-id=gym]').click();
   check('phone tick updates the headline', text('.ph-head h1') === '2 of 3 done');
   $('.ph-row[data-id=read]').click();
   check('all three makes it all done', text('.ph-head h1') === 'All done today');
@@ -161,7 +161,7 @@ try {
   check('phone: nothing on it, so a full-screen sign-in with no way around it', !visible(g, '[data-f=cancel]'));
   signIn(g, fred.password);
   await until(() => in$(g, '.ph'), 'the phone check-in');
-  check('the phone gets the laptop data, today’s gym tick included', in$(g, '.ph-row.on[data-id=gym]'));
+  check('the phone gets the laptop data, today’s gym tick included', in$(g, '.ph-feature .on[data-id=gym]'));
   await until(() => in$(g, '.sync.on'), 'the phone’s green dot');
   check('phone: the same green dot, top right', corner(g));
 
@@ -286,7 +286,7 @@ try {
   const now = JSON.parse(f.contentWindow.localStorage.getItem('lifehub:dev'));
   const tracker = all('a[data-act=launch][data-ritual=money]').find((a) => a.textContent.includes('Portfolio tracker'));
   check('an older laptop record: new schedules, review buttons, and the tracker online',
-    now.version === 6 && !!now.penalty && !!now.habits.find((h) => h.id === 'mn').link && !!now.habits.find((h) => h.id === 'gym').link && text('.ritual:nth-child(1) .eyebrow') === 'Weekly · Monday' && now.rituals[2].steps[1].does === 'week-goals' &&
+    now.version === 7 && !!now.launchers.find((x) => x.id === 'gym') && !!now.penalty && !!now.habits.find((h) => h.id === 'mn').link && !!now.habits.find((h) => h.id === 'gym').link && text('.ritual:nth-child(1) .eyebrow') === 'Weekly · Monday' && now.rituals[2].steps[1].does === 'week-goals' &&
     /^https:\/\/[^/]+\.streamlit\.app\//.test(tracker.getAttribute('href')) && now.launchers.find((x) => x.id === 'portfolio').where === 'everywhere');
 } catch (e) {
   log.push({ name: e.message, ok: false });

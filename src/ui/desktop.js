@@ -154,15 +154,16 @@ function winsFooter(s, day) {
 
 export function renderDesktop({ s, day, phone, footer = '', sync = '' }) {
   const habits = s.habits.filter((h) => !h.archived);
-  const featured = habits.find((h) => h.featured);
+  const featured = habits.filter((h) => h.featured);
   const rituals = s.rituals.filter((r) => !r.archived);
   return `
   <div class="desk">
     ${sync}
-    ${header(s, habits, featured, day)}
+    ${header(s, habits, featured[0], day)}
     <div class="row1">
       ${habitsCard(s, habits, day)}
-      ${featured ? featureCard(s, featured, day, phone) : ''}
+      ${featured.length > 1 ? `<div class="features">${featured.map((h) => featureCard(s, h, day, phone)).join('')}</div>`
+    : featured.map((h) => featureCard(s, h, day, phone)).join('')}
     </div>
     <div class="block">
       <div class="section-head"><h2>Rituals</h2><div class="muted">Recurring sessions, each one a button away from the tool that does the work</div></div>
