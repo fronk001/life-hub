@@ -307,7 +307,9 @@ old icon until the home-screen shortcut is removed and added again.
 
 `src/portfolio/` (live at /life-hub/portfolio/) is the **Portfolio Tracker's home-screen launcher**: a
 tiny page (gold icon + manifest) that redirects to the tracker's Streamlit address when opened with
-`?launch`, and otherwise shows "Add to Home Screen" instructions. It lives here because Streamlit Cloud
+`?launch`, and otherwise shows "Add to Home Screen" instructions. A `?launch` that is still the adding
+visit (a reload or restore in the same tab, or a hand-off to Safari under 30 s after the page stamped
+its address) does not redirect: Safari would otherwise save Streamlit's page and logo instead. It lives here because Streamlit Cloud
 puts its own logo on a shortcut and the tracker's repo is private, so it can't host a public page. Not
 part of the app: `sw.js` ignores `portfolio/` and `build.py` keeps it out of the offline copy (checked in
 `sw-check.html`). The page makes the tracker's address public (the tracker itself asks to sign in).
