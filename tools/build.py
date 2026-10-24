@@ -23,6 +23,7 @@ SRC = ROOT / "src"
 DIST = ROOT / "dist"
 LEFT_OUT = {"data/seed.local.js"}
 NOT_KEPT = {"sw.js"}  # the browser fetches the service worker itself
+NOT_KEPT_DIRS = ("portfolio/",)  # the Portfolio Tracker's launcher page: published, but not part of this app
 
 
 def stamp(path: Path, old: str, new: str) -> None:
@@ -46,7 +47,7 @@ def main() -> None:
         digest.update(f.encode() + b"\0" + (SRC / f).read_bytes() + b"\0")
     version = digest.hexdigest()[:12]
     # "./" as well as index.html: the phone opens the folder address.
-    kept = ["./"] + [f for f in files if f not in NOT_KEPT]
+    kept = ["./"] + [f for f in files if f not in NOT_KEPT and not f.startswith(NOT_KEPT_DIRS)]
     stamp(DIST / "sw.js", "'__VERSION__'", repr(version))
     stamp(DIST / "sw.js", "__FILES__", json.dumps(kept, indent=2))
     stamp(DIST / "index.html", '<meta name="app-version" content="dev">', f'<meta name="app-version" content="{version}">')

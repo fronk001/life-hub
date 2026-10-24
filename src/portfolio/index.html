@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Portfolio</title>
+<meta name="apple-mobile-web-app-title" content="Portfolio">
+<meta name="theme-color" content="#0b0702">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="manifest" href="manifest.webmanifest">
+<script>
+  // Opened from the home screen (?launch): go straight to the app.
+  // Opened in the browser to be added: stay, and set the address the
+  // shortcut will keep to the ?launch one.
+  var APP = "https://portfolio-tracker-fronk.streamlit.app/";
+  if (/[?&]launch\b/.test(location.search)) location.replace(APP);
+  else history.replaceState(null, "", "?launch");
+</script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+         background: #0b0702; color: #f3e7c9; font: 17px/1.5 system-ui, sans-serif;
+         text-align: center; padding: 0 16px; }
+  img { border-radius: 22%; }
+  a { color: #f5c451; }
+</style>
+</head>
+<body>
+<main>
+  <img src="apple-touch-icon.png" width="96" height="96" alt="">
+  <h1>Portfolio Tracker</h1>
+  <p>Add this page to your home screen.<br>
+     iPhone: Share &rarr; Add to Home Screen.<br>
+     Android: &#8942; &rarr; Add to Home screen.</p>
+  <p><a href="https://portfolio-tracker-fronk.streamlit.app/">Open the tracker</a></p>
+</main>
+</body>
+</html>

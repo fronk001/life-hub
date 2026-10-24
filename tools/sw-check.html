@@ -78,6 +78,17 @@ try {
     faces().includes('Fraunces') && ![...doc.fonts].some((x) => x.status === 'error'));
   check('offline, the tick made before is still there', doc.querySelector('.feature [data-act=habit]').textContent.trim() === 'Done for today');
   await fetch('/__offline?off');
+
+  // portfolio/ is the Portfolio Tracker's home-screen launcher: it lives at an address
+  // this offline copy covers, but it is not the app. The copy must neither keep it nor
+  // answer for it, or the shortcut would open Life Hub (or a stale launcher).
+  check('the launcher page is published', await reachable('/dist/portfolio/'));
+  check('the offline copy keeps nothing under portfolio/',
+    !files.some((x) => x.startsWith('portfolio/')) && !(await cache.match(new URL('portfolio/apple-touch-icon.png', `${location.origin}/dist/`).href)));
+  await go('../dist/portfolio/');
+  const launcher = f.contentDocument;
+  check('with the offline copy in charge, /portfolio/ opens the launcher, not the app',
+    f.contentWindow.navigator.serviceWorker.controller && launcher.title === 'Portfolio' && !launcher.querySelector('.desk, #app'));
 } catch (e) {
   log.push({ name: e.message, ok: false });
   await fetch('/__offline?off');

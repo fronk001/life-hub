@@ -28,8 +28,12 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  const url = new URL(req.url);
   // Sign-in, the database and the Firebase SDK are other sites: left alone.
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // portfolio/ is the Portfolio Tracker's home-screen launcher, not part of this
+  // app (tools/build.py keeps it out of FILES too): straight to the network.
+  if (url.pathname.startsWith(new URL('portfolio/', location).pathname)) return;
   e.respondWith(caches.open(CACHE)
     .then((c) => c.match(req, { ignoreSearch: true, ignoreVary: true }))
     .then((hit) => hit || fetch(req)));

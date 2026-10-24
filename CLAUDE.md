@@ -305,6 +305,13 @@ Life Hub is emerald. Its generator is `tools/jewel-icons/` (README inside: how t
 gem goes with which app); the other three repos ship that generator's output. A phone keeps the
 old icon until the home-screen shortcut is removed and added again.
 
+`src/portfolio/` (live at /life-hub/portfolio/) is the **Portfolio Tracker's home-screen launcher**: a
+tiny page (gold icon + manifest) that redirects to the tracker's Streamlit address when opened with
+`?launch`, and otherwise shows "Add to Home Screen" instructions. It lives here because Streamlit Cloud
+puts its own logo on a shortcut and the tracker's repo is private, so it can't host a public page. Not
+part of the app: `sw.js` ignores `portfolio/` and `build.py` keeps it out of the offline copy (checked in
+`sw-check.html`). The page makes the tracker's address public (the tracker itself asks to sign in).
+
 ## Offline copy + publishing (step 5)
 
 - `tools/build.py` copies src/ → dist/ minus `seed.local.js`, stamps `sw.js` with
