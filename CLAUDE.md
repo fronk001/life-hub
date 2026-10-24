@@ -62,7 +62,7 @@ py tools/run_tests.py tools/smoke.html     # UI smoke test: taps the real app, t
 py tools/run_tests.py tools/firebase-check.html  # real Firebase SDK from the CDN (needs internet, no account)
 py tools/build.py                          # dist/ = what GitHub Pages publishes (CI runs this too)
 py tools/run_tests.py tools/sw-check.html  # after build.py: offline copy installs, app opens with dist/ unreachable
-py tools/icons.py                          # redraw src/icons/*.png (needs Pillow; PNGs are committed)
+py tools/jewel-icons/jewel_icons.py OUT    # redraw the icon family (needs Pillow + numpy); see tools/jewel-icons/README.md
 py tools/shot.py                           # screenshots/desktop.png + phone.png (demo, Thu 1 Oct)
 py tools/shot.py --dom "?today=2026-09-28" # print rendered HTML instead
 ```
@@ -100,10 +100,11 @@ src/ui/      app.js (boot, click delegation), desktop.js, phone.js, html.js,
              sheets.js (editors: goals, plan of days; outside #app like the sign-in form)
 src/app.css  all styling; tokens on :root copied from the mockup
 src/fonts/   Fraunces + Instrument Sans, variable woff2, extracted from the mockup file
-src/sw.js    offline copy (published copy only); manifest.webmanifest; icons/ (tools/icons.py)
+src/sw.js    offline copy (published copy only); manifest.webmanifest; icons/ (emerald "Jewel" icon, 24 Oct 2026; PNGs committed, made by tools/jewel-icons/)
 tests/       *.test.js for src/core + engine.test.js (two devices, pretend server)
 tools/       serve.py, run_tests.py, shot.py, smoke.html, firebase-check.html, phone.html,
-             build.py (src → dist), sw-check.html, icons.py
+             build.py (src → dist), sw-check.html,
+             jewel-icons/ (generator for the home-screen icons of all four apps; README inside)
 .github/workflows/pages.yml   build.py + deploy on every push to main
 firestore.rules  pasted by Fred into the console; SETUP.md  his step-by-step
 ```
@@ -296,6 +297,13 @@ the folder to the current window instead of opening a new one
   lastAt } | { added } } }` (`added` = logged afterwards: counts for its date).
 - Habit `gym` gets `link: { app: 'gym', since: '2026-10-16' }` (migrate step 6). `data/links.js`
   listens to every app in `APPS` (mongolian, gym) the same way; desktop cells name the app.
+
+## Home-screen icons (24 Oct 2026)
+
+All four apps (Mongolian, Life Hub, Gym, Portfolio Tracker) share the "Jewel" icon family.
+Life Hub is emerald. Its generator is `tools/jewel-icons/` (README inside: how to run it, which
+gem goes with which app); the other three repos ship that generator's output. A phone keeps the
+old icon until the home-screen shortcut is removed and added again.
 
 ## Offline copy + publishing (step 5)
 
